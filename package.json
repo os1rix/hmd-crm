@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "warm": "node scripts/warm-routes.mjs",
+    "dev:warm": "sh scripts/dev-with-warmup.sh",
     "build": "next build",
     "start": "next start",
     "lint": "biome check .",
