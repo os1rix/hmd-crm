@@ -1,11 +1,11 @@
-import { callClaude } from "@/lib/ai";
+import { callAi } from "@/lib/ai";
 import { apiError, apiSuccess } from "@/lib/api";
 
 export async function POST(request: Request) {
   const { summary } = (await request.json()) as { summary: unknown };
 
   try {
-    const narrative = await callClaude(
+    const narrative = await callAi(
       "Write a 3-5 sentence finance executive summary of CRM pipeline health. Mention weighted value, biggest deals, and risks.",
       [{ role: "user", content: JSON.stringify(summary) }],
     );

@@ -1,4 +1,4 @@
-import { callClaude } from "@/lib/ai";
+import { callAi } from "@/lib/ai";
 import { apiError, apiSuccess } from "@/lib/api";
 
 export async function POST(request: Request) {
@@ -8,7 +8,7 @@ export async function POST(request: Request) {
   };
 
   try {
-    const text = await callClaude(
+    const text = await callAi(
       'Extract CRM updates from meeting notes. Reply JSON: {"stageChanges":[],"tasks":[],"contacts":[]}',
       [{ role: "user", content: `Account: ${accountName}\n\n${notes}` }],
     );

@@ -15,13 +15,15 @@ import { formatEuro, initials } from "@/lib/format";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
+type ForecastRow = { quarter: string; deviceRevenue: number; serviceRevenue: number };
+
 type Deal = {
   id: string;
   title: string;
   stage: string;
   channel: string;
   lastActivityAt: string;
-  quarterlyForecast: Array<{ quarter: string; deviceRevenue: number; serviceRevenue: number }>;
+  quarterlyForecast: ForecastRow[];
   account: { id: string; name: string };
   owner: { name: string };
   offers: Array<{
@@ -38,12 +40,16 @@ type Catalog = {
   services: Array<{ id: string; name: string }>;
 };
 
+type AiAction = { action: string; topics?: string[]; email: string };
+
 export default function DealsPageClient() {
   const searchParams = useSearchParams();
   const [deals, setDeals] = useState<Deal[]>([]);
   const [selected, setSelected] = useState<Deal | null>(null);
+  const [forecastDraft, setForecastDraft] = useState<ForecastRow[]>([]);
   const [catalog, setCatalog] = useState<Catalog | null>(null);
-  const [aiAction, setAiAction] = useState<{ action: string; email: string } | null>(null);
+  const [aiAction, setAiAction] = useState<AiAction | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
   const [offerItems, setOfferItems] = useState<
     Array<{ itemType: string; itemId: string; name: string; quantity: number; unitPrice: string }>
   >([]);
@@ -72,26 +78,54 @@ export default function DealsPageClient() {
 
   function openDeal(deal: Deal) {
     setSelected(deal);
+    setForecastDraft(structuredClone(deal.quarterlyForecast ?? []));
     setAiAction(null);
+    setAiLoading(true);
     fetch("/api/ai/next-action", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ dealId: deal.id }),
     })
       .then((r) => r.json())
-      .then(setAiAction)
-      .catch(() => {});
+      .then((data) => setAiAction(data as AiAction))
+      .catch(() => setAiAction(null))
+      .finally(() => setAiLoading(false));
   }
 
   async function updateStage(stage: string) {
     if (!selected) return;
-    await fetch(`/api/deals/${selected.id}`, {
+    const res = await fetch(`/api/deals/${selected.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ stage }),
     });
+    if (!res.ok) return;
+    const updated = { ...selected, stage };
+    setSelected(updated);
     load();
-    setSelected({ ...selected, stage });
+  }
+
+  async function saveForecast() {
+    if (!selected) return;
+    const res = await fetch(`/api/deals/${selected.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ quarterlyForecast: forecastDraft }),
+    });
+    if (!res.ok) return;
+    const updated = { ...selected, quarterlyForecast: forecastDraft };
+    setSelected(updated);
+    load();
+  }
+
+  function updateForecastRow(
+    index: number,
+    field: "deviceRevenue" | "serviceRevenue",
+    value: number,
+  ) {
+    setForecastDraft((rows) =>
+      rows.map((row, i) => (i === index ? { ...row, [field]: value } : row)),
+    );
   }
 
   async function draftOffer() {
@@ -147,9 +181,14 @@ export default function DealsPageClient() {
     "lost",
   ];
 
+  const threeYearTotal = dealTotalValue(forecastDraft);
+
   return (
     <div className="p-6">
-      <h1 className="mb-6 text-2xl font-semibold">Pipeline</h1>
+      <h1 className="mb-2 text-2xl font-semibold">Pipeline</h1>
+      <p className="mb-6 text-sm text-muted">
+        Drag-free updates — change stage, edit 3-year forecast, and get AI next steps per deal.
+      </p>
       <div className="flex gap-4 overflow-x-auto pb-4">
         {stages.map((stage) => {
           const column = deals.filter((d) => d.stage === stage);
@@ -198,20 +237,31 @@ export default function DealsPageClient() {
       >
         {selected && (
           <div className="space-y-6">
-            {aiAction && (
-              <div className="rounded-xl border border-accent/40 bg-accent-muted/30 p-4">
-                <p className="mb-1 text-xs font-medium uppercase text-accent">
-                  AI next best action
-                </p>
-                <p className="mb-3 text-sm">{aiAction.action}</p>
-                {aiAction.email && (
-                  <details className="text-sm text-muted">
-                    <summary className="cursor-pointer text-accent">Draft email</summary>
-                    <p className="mt-2 whitespace-pre-wrap">{aiAction.email}</p>
-                  </details>
-                )}
-              </div>
-            )}
+            <div className="rounded-xl border border-accent/40 bg-accent-muted/30 p-4">
+              <p className="mb-1 text-xs font-medium uppercase text-accent">AI next best action</p>
+              {aiLoading ? (
+                <p className="text-sm text-muted">Generating recommendations…</p>
+              ) : aiAction ? (
+                <>
+                  <p className="mb-3 text-sm">{aiAction.action}</p>
+                  {aiAction.topics && aiAction.topics.length > 0 && (
+                    <ul className="mb-3 list-inside list-disc space-y-1 text-sm text-muted">
+                      {aiAction.topics.map((topic) => (
+                        <li key={topic}>{topic}</li>
+                      ))}
+                    </ul>
+                  )}
+                  {aiAction.email && (
+                    <details className="text-sm text-muted">
+                      <summary className="cursor-pointer text-accent">Draft email</summary>
+                      <p className="mt-2 whitespace-pre-wrap">{aiAction.email}</p>
+                    </details>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-muted">No recommendation available.</p>
+              )}
+            </div>
 
             <div>
               <label htmlFor="deal-stage" className="mb-1 block text-xs text-muted">
@@ -232,7 +282,12 @@ export default function DealsPageClient() {
             </div>
 
             <div>
-              <h3 className="mb-2 text-sm font-medium">Quarterly forecast</h3>
+              <div className="mb-2 flex items-center justify-between">
+                <h3 className="text-sm font-medium">3-year time-phased forecast</h3>
+                <p className="font-mono text-sm tabular-nums text-accent">
+                  Total: {formatEuro(threeYearTotal)}
+                </p>
+              </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead>
@@ -243,20 +298,47 @@ export default function DealsPageClient() {
                     </tr>
                   </thead>
                   <tbody>
-                    {selected.quarterlyForecast?.slice(0, 8).map((q) => (
+                    {forecastDraft.slice(0, 12).map((q, index) => (
                       <tr key={q.quarter} className="border-t border-border">
                         <td className="p-2">{q.quarter}</td>
-                        <td className="p-2 font-mono tabular-nums">
-                          {formatEuro(q.deviceRevenue)}
+                        <td className="p-2">
+                          <input
+                            type="number"
+                            min={0}
+                            value={q.deviceRevenue}
+                            onChange={(e) =>
+                              updateForecastRow(index, "deviceRevenue", Number(e.target.value) || 0)
+                            }
+                            className="w-full rounded border border-border bg-background px-2 py-1 font-mono tabular-nums"
+                          />
                         </td>
-                        <td className="p-2 font-mono tabular-nums">
-                          {formatEuro(q.serviceRevenue)}
+                        <td className="p-2">
+                          <input
+                            type="number"
+                            min={0}
+                            value={q.serviceRevenue}
+                            onChange={(e) =>
+                              updateForecastRow(
+                                index,
+                                "serviceRevenue",
+                                Number(e.target.value) || 0,
+                              )
+                            }
+                            className="w-full rounded border border-border bg-background px-2 py-1 font-mono tabular-nums"
+                          />
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
+              <button
+                type="button"
+                onClick={saveForecast}
+                className="mt-3 rounded-lg bg-accent px-3 py-2 text-sm font-medium text-white"
+              >
+                Save forecast
+              </button>
             </div>
 
             <div>

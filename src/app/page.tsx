@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/db";
-import { cases, deals, offerApprovals } from "@/db/schema";
-import { dealTotalValue, isDealAtRisk } from "@/lib/deals";
+import { accounts, cases, deals, offerApprovals } from "@/db/schema";
+import { STAGE_LABELS, dealTotalValue, isDealAtRisk } from "@/lib/deals";
 import { formatEuro } from "@/lib/format";
 import { getSessionUser } from "@/lib/session";
 import { desc, eq } from "drizzle-orm";
@@ -16,20 +16,21 @@ export default async function HomePage() {
         <div className="max-w-lg text-center">
           <h2 className="mb-3 text-2xl font-semibold">HMD Secure CRM</h2>
           <p className="text-muted">
-            Select a demo user from the top bar to explore role-based views with seeded data.
+            Select a demo user from the top bar to explore role-based views.
           </p>
         </div>
       </div>
     );
   }
 
-  const myDeals =
+  const myAccounts =
     user.role === "sales_rep"
-      ? await db.query.deals.findMany({
-          where: eq(deals.ownerId, user.id),
-          with: { account: true },
-          orderBy: [desc(deals.updatedAt)],
-          limit: 5,
+      ? await db.query.accounts.findMany({
+          where: eq(accounts.ownerId, user.id),
+          with: {
+            deals: { orderBy: [desc(deals.updatedAt)] },
+          },
+          orderBy: [desc(accounts.updatedAt)],
         })
       : [];
 
@@ -65,21 +66,71 @@ export default async function HomePage() {
 
       {user.role === "sales_rep" && (
         <section className="mb-8">
-          <h2 className="mb-4 text-lg font-medium">My pipeline highlights</h2>
-          <div className="grid gap-3 md:grid-cols-2">
-            {myDeals.map((deal) => (
-              <Link
-                key={deal.id}
-                href={`/deals?deal=${deal.id}`}
-                className="rounded-xl border border-border bg-card p-4 hover:border-accent"
-              >
-                <p className="font-medium">{deal.title}</p>
-                <p className="text-sm text-muted">{deal.account.name}</p>
-                <p className="mt-2 font-mono text-sm tabular-nums text-accent">
-                  {formatEuro(dealTotalValue(deal.quarterlyForecast))}
-                </p>
-              </Link>
-            ))}
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-medium">My accounts & deal status</h2>
+            <Link href="/deals" className="text-sm text-accent hover:underline">
+              Open pipeline →
+            </Link>
+          </div>
+          <div className="overflow-x-auto rounded-xl border border-border">
+            <table className="w-full min-w-[720px] text-left text-sm">
+              <thead className="bg-sidebar text-xs uppercase text-muted">
+                <tr>
+                  <th className="p-3">Account</th>
+                  <th className="p-3">Open deals</th>
+                  <th className="p-3">Top stage</th>
+                  <th className="p-3 font-mono">Pipeline</th>
+                  <th className="p-3">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {myAccounts.map((account) => {
+                  const openDeals = account.deals.filter(
+                    (d) => d.stage !== "won" && d.stage !== "lost",
+                  );
+                  const topDeal = openDeals[0];
+                  const pipeline = openDeals.reduce(
+                    (sum, d) => sum + dealTotalValue(d.quarterlyForecast),
+                    0,
+                  );
+                  const risky = openDeals.some((d) => isDealAtRisk(d));
+
+                  return (
+                    <tr key={account.id} className="border-t border-border hover:bg-card/50">
+                      <td className="p-3">
+                        <Link
+                          href={`/accounts/${account.id}`}
+                          className="font-medium hover:text-accent"
+                        >
+                          {account.name}
+                        </Link>
+                        <p className="text-xs text-muted">
+                          {account.segment} · {account.region}
+                        </p>
+                      </td>
+                      <td className="p-3">{openDeals.length}</td>
+                      <td className="p-3">
+                        {topDeal ? (
+                          <Link href={`/deals?deal=${topDeal.id}`} className="hover:text-accent">
+                            {STAGE_LABELS[topDeal.stage]}
+                          </Link>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td className="p-3 font-mono tabular-nums">{formatEuro(pipeline)}</td>
+                      <td className="p-3">
+                        {risky ? (
+                          <Badge variant="warning">At risk</Badge>
+                        ) : (
+                          <Badge variant="success">On track</Badge>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </section>
       )}

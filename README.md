@@ -48,11 +48,11 @@ npm run db:studio     # Drizzle Studio GUI
 
 ## API routes (server-side)
 
-| Route | Methods | Description |
-|-------|---------|-------------|
-| `/api/health` | GET | App + DB connectivity |
+| Route           | Methods   | Description            |
+| --------------- | --------- | ---------------------- |
+| `/api/health`   | GET       | App + DB connectivity  |
 | `/api/accounts` | GET, POST | List / create accounts |
-| `/api/deals` | GET, POST | List / create deals |
+| `/api/deals`    | GET, POST | List / create deals    |
 
 All POST bodies are validated with Zod before hitting Drizzle.
 
@@ -66,46 +66,29 @@ npm run format      # format only
 
 Install the git hook once (pick one):
 
-```bash
-# WSL / Debian / Ubuntu — pipx (recommended; avoids PEP 668 errors)
-sudo apt install pipx
-pipx ensurepath
-# restart shell, then:
-pipx install pre-commit
-pre-commit install
-
 # or distro package (Ubuntu 24.04+)
+
 sudo apt install pre-commit
 pre-commit install
 
 # macOS
+
 brew install pre-commit
 pre-commit install
+
 ```
 
 On each commit, `.pre-commit-config.yaml` runs Biome on staged files.
 
-## Azure deployment (later)
-
-Terraform lives in [`infra/`](infra/README.md):
-
-- Container Apps Environment + Container App
-- PostgreSQL Flexible Server 16
-- Key Vault (DATABASE_URL, Entra ID, OpenAI secrets)
-
-```bash
-cd infra && cp terraform.tfvars.example terraform.tfvars
-terraform init && terraform apply
-```
-
-Then build/push the production image and update `container_image` in `terraform.tfvars`.
-
 ## Project structure
 
 ```
-infra/           # Terraform (Container App, Postgres, Key Vault)
+
 src/
-  app/           # Pages + API routes (server)
-  db/            # Drizzle client + schema
-  lib/           # Zod validators, API helpers
+app/ # Pages + API routes (server)
+db/ # Drizzle client + schema
+lib/ # Zod validators, API helpers
+
+```
+
 ```

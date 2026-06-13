@@ -1,12 +1,16 @@
 import { db } from "@/db";
 import { deals } from "@/db/schema";
 import { apiError, apiSuccess, parseJsonBody, validationErrorResponse } from "@/lib/api";
+import { dealTotalValue } from "@/lib/deals";
+import { getSessionUser } from "@/lib/session";
 import { createDealSchema } from "@/lib/validators";
-import { desc } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 
 export async function GET() {
   try {
+    const user = await getSessionUser();
     const rows = await db.query.deals.findMany({
+      where: user?.role === "sales_rep" ? eq(deals.ownerId, user.id) : undefined,
       orderBy: [desc(deals.updatedAt)],
       with: {
         account: true,
@@ -18,7 +22,7 @@ export async function GET() {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to fetch deals";
     console.error("[api/deals]", message);
-    return Response.json([]);
+    return apiError(message, 503);
   }
 }
 

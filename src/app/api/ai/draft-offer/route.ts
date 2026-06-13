@@ -1,4 +1,4 @@
-import { callClaude } from "@/lib/ai";
+import { callAi } from "@/lib/ai";
 import { apiError, apiSuccess } from "@/lib/api";
 
 export async function POST(request: Request) {
@@ -9,7 +9,7 @@ export async function POST(request: Request) {
   };
 
   try {
-    const text = await callClaude(
+    const text = await callAi(
       'Draft a B2B offer as JSON array: [{"itemType":"product|service","name":"","quantity":number,"unitPrice":"string"}]. Use realistic HMD Secure devices and services.',
       [
         {

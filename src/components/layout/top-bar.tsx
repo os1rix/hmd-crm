@@ -55,7 +55,7 @@ export function TopBar({ user }: { user: SessionUser | null }) {
         <p className="text-sm text-muted">Select a demo user to begin</p>
         <div className="flex flex-wrap gap-2">
           {users.length === 0 ? (
-            <p className="text-xs text-muted">Loading users… (run db:seed if this persists)</p>
+            <p className="text-xs text-muted">Loading demo users…</p>
           ) : (
             users.map((u) => (
               <button

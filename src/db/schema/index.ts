@@ -234,6 +234,25 @@ export const accountsRelations = relations(accounts, ({ one, many }) => ({
   offers: many(offers),
 }));
 
+export const contactsRelations = relations(contacts, ({ one }) => ({
+  account: one(accounts, { fields: [contacts.accountId], references: [accounts.id] }),
+}));
+
+export const servicesRelations = relations(services, ({ many }) => ({
+  cases: many(cases),
+}));
+
+export const notesRelations = relations(notes, ({ one }) => ({
+  author: one(users, { fields: [notes.authorId], references: [users.id] }),
+  account: one(accounts, { fields: [notes.accountId], references: [accounts.id] }),
+  deal: one(deals, { fields: [notes.dealId], references: [deals.id] }),
+  case: one(cases, { fields: [notes.caseId], references: [cases.id] }),
+}));
+
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  user: one(users, { fields: [notifications.userId], references: [users.id] }),
+}));
+
 export const dealsRelations = relations(deals, ({ one, many }) => ({
   account: one(accounts, { fields: [deals.accountId], references: [accounts.id] }),
   owner: one(users, { fields: [deals.ownerId], references: [users.id] }),

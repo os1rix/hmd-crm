@@ -72,16 +72,10 @@ try {
 
   console.log("[db-setup] Connected");
 
-  const [{ reg }] = await sql`SELECT to_regclass('public.users') AS reg`;
-
-  if (reg) {
-    console.log("[db-setup] Schema already exists, skipping migrations");
-  } else {
-    console.log("[db-setup] Running migrations…");
-    const db = drizzle(sql);
-    await migrate(db, { migrationsFolder: path.join(root, "drizzle") });
-    console.log("[db-setup] Migrations complete");
-  }
+  console.log("[db-setup] Running migrations…");
+  const db = drizzle(sql);
+  await migrate(db, { migrationsFolder: path.join(root, "drizzle") });
+  console.log("[db-setup] Migrations complete");
 } catch (error) {
   const message = error instanceof Error ? error.message : String(error);
   console.error("[db-setup] Failed:", message);

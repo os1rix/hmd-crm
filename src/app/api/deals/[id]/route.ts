@@ -1,6 +1,7 @@
 import { db } from "@/db";
 import { activityLog, deals, notes } from "@/db/schema";
 import { apiError, apiSuccess, parseJsonBody, validationErrorResponse } from "@/lib/api";
+import { dealTotalValue } from "@/lib/deals";
 import { getSessionUser } from "@/lib/session";
 import { updateDealSchema } from "@/lib/validators";
 import { eq } from "drizzle-orm";
@@ -37,10 +38,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const existing = await db.query.deals.findFirst({ where: eq(deals.id, id) });
     if (!existing) return apiError("Not found", 404);
 
+    const forecastTotal = parsed.data.quarterlyForecast
+      ? dealTotalValue(parsed.data.quarterlyForecast)
+      : undefined;
+
     const [deal] = await db
       .update(deals)
       .set({
         ...parsed.data,
+        ...(forecastTotal !== undefined ? { threeYearForecast: forecastTotal.toFixed(2) } : {}),
         lastActivityAt: new Date(),
         updatedAt: new Date(),
       })
