@@ -34,12 +34,14 @@ RUN adduser --system --uid 1001 nextjs
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=builder /app/drizzle ./drizzle
-COPY --from=builder /app/drizzle.config.ts ./drizzle.config.ts
-COPY --from=builder /app/scripts ./scripts
-COPY --from=builder /app/src/db ./src/db
-COPY --from=builder /app/package.json ./package.json
+COPY --from=deps /app/node_modules ./db-setup/node_modules
+COPY --from=builder /app/drizzle ./db-setup/drizzle
+COPY --from=builder /app/drizzle.config.ts ./db-setup/drizzle.config.ts
+COPY --from=builder /app/scripts/seed.ts ./db-setup/scripts/seed.ts
+COPY --from=builder /app/src/db ./db-setup/src/db
+COPY --from=builder /app/package.json ./db-setup/package.json
+COPY --from=builder /app/db-setup/setup.mjs ./db-setup/setup.mjs
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/start.mjs ./scripts/start.mjs
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000
