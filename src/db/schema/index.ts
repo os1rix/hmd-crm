@@ -55,12 +55,28 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+export type QuarterlyForecastEntry = {
+  quarter: string;
+  deviceRevenue: number;
+  serviceRevenue: number;
+};
+
+export type OfferLineItem = {
+  itemType: "product" | "service";
+  itemId: string;
+  name: string;
+  quantity: number;
+  unitPrice: string;
+};
+
 export const accounts = pgTable("accounts", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
   domain: text("domain"),
+  segment: text("segment"),
   industry: text("industry"),
   region: text("region"),
+  channel: dealChannelEnum("channel").notNull().default("direct"),
   ownerId: uuid("owner_id").references(() => users.id),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
@@ -92,7 +108,7 @@ export const deals = pgTable("deals", {
   stage: dealStageEnum("stage").notNull().default("interest_shown"),
   expectedCloseDate: timestamp("expected_close_date", { withTimezone: true }),
   threeYearForecast: numeric("three_year_forecast", { precision: 14, scale: 2 }),
-  quarterlyForecast: jsonb("quarterly_forecast").$type<Record<string, number>>(),
+  quarterlyForecast: jsonb("quarterly_forecast").$type<QuarterlyForecastEntry[]>(),
   lastActivityAt: timestamp("last_activity_at", { withTimezone: true }).defaultNow().notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
@@ -157,9 +173,7 @@ export const offers = pgTable("offers", {
     .notNull()
     .references(() => users.id),
   version: integer("version").notNull().default(1),
-  lineItems: jsonb("line_items")
-    .$type<Array<{ productId: string; quantity: number; unitPrice: string; discount?: string }>>()
-    .notNull(),
+  lineItems: jsonb("line_items").$type<OfferLineItem[]>().notNull(),
   subtotal: numeric("subtotal", { precision: 14, scale: 2 }).notNull(),
   discountPercent: numeric("discount_percent", { precision: 5, scale: 2 }),
   discountJustification: text("discount_justification"),
@@ -232,6 +246,15 @@ export const casesRelations = relations(cases, ({ one, many }) => ({
   service: one(services, { fields: [cases.serviceId], references: [services.id] }),
   assignee: one(users, { fields: [cases.assigneeId], references: [users.id] }),
   notes: many(notes),
+}));
+
+export const activityLogRelations = relations(activityLog, ({ one }) => ({
+  actor: one(users, { fields: [activityLog.actorId], references: [users.id] }),
+}));
+
+export const offerApprovalsRelations = relations(offerApprovals, ({ one }) => ({
+  offer: one(offers, { fields: [offerApprovals.offerId], references: [offers.id] }),
+  approver: one(users, { fields: [offerApprovals.approverId], references: [users.id] }),
 }));
 
 export const offersRelations = relations(offers, ({ one, many }) => ({

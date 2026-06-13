@@ -17,7 +17,7 @@ Requires **Node.js 20+** (Docker image uses Node 22). Entra ID JWT auth is stubb
 ### With Docker (recommended)
 
 ```bash
-cp .env.example .env.docker   # already present for compose
+cp .env.example .env
 docker compose up --build
 ```
 

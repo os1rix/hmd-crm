@@ -13,10 +13,11 @@ export async function GET() {
         contacts: true,
       },
     });
-    return apiSuccess(rows);
+    return Response.json(rows);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to fetch accounts";
-    return apiError(message);
+    console.error("[api/accounts]", message);
+    return Response.json([]);
   }
 }
 

@@ -11,12 +11,14 @@ export async function GET() {
       with: {
         account: true,
         owner: true,
+        offers: { with: { approvals: true } },
       },
     });
-    return apiSuccess(rows);
+    return Response.json(rows);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to fetch deals";
-    return apiError(message);
+    console.error("[api/deals]", message);
+    return Response.json([]);
   }
 }
 

@@ -3,6 +3,4 @@ node_modules
 .git
 *.md
 .env*
-!.env.docker
 !.env.example
-drizzle

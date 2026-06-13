@@ -24,10 +24,10 @@ services:
     ports:
       - "3000:3000"
     env_file:
-      - .env.docker
+      - .env
     environment:
       WATCHPACK_POLLING: "true"
-      WARM_ROUTES: "true"
+      DATABASE_URL: postgresql://hmd:hmd@postgres:5432/hmd_crm
     volumes:
       - .:/app
       - /app/node_modules
