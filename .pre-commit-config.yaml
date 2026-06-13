@@ -1,0 +1,9 @@
+repos:
+  - repo: local
+    hooks:
+      - id: biome
+        name: biome check
+        entry: npx biome check --write --no-errors-on-unmatched --files-ignore-unknown=true
+        language: system
+        files: \.(js|ts|jsx|tsx|json|jsonc|mjs|cjs)$
+        pass_filenames: true
