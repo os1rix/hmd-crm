@@ -106,12 +106,6 @@ const daysAgo = (n: number) => new Date(Date.now() - n * 24 * 60 * 60 * 1000);
 const daysAhead = (n: number) => new Date(Date.now() + n * 24 * 60 * 60 * 1000);
 
 async function seed() {
-  const existing = await db.select().from(users).limit(1);
-  if (existing.length > 0 && process.env.FORCE_SEED !== "true") {
-    console.log("Database already seeded, skipping.");
-    return;
-  }
-
   console.log("Clearing existing data…");
   await db.delete(notifications);
   await db.delete(activityLog);
