@@ -22,7 +22,7 @@ docker compose up --build
 ```
 
 - App: http://localhost:3000
-- Postgres: `localhost:5432` (user `hmd`, password `hmd`, db `hmd_crm`)
+- Postgres: `localhost:5433` (user `hmd`, password `hmd`, db `hmd_crm`)
 - Health check: http://localhost:3000/api/health
 
 ### Local dev (Postgres in Docker, Next.js on host)
