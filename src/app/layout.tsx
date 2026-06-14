@@ -20,7 +20,14 @@ export default async function RootLayout({
   const user = await getSessionUser();
 
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var a=localStorage.getItem("hmd-appearance");var t=a==="light"||a==="dark"?a:(a==="system"&&window.matchMedia("(prefers-color-scheme: light)").matches?"light":"dark");document.documentElement.dataset.theme=t||"dark";document.documentElement.style.colorScheme=t||"dark";}catch(e){document.documentElement.dataset.theme="dark";}})();`,
+          }}
+        />
+      </head>
       <body className={`${inter.variable} ${mono.variable} h-screen overflow-hidden antialiased`}>
         <AppShell user={user}>{children}</AppShell>
       </body>

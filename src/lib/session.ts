@@ -8,6 +8,8 @@ export type SessionUser = {
   email: string;
   name: string;
   role: "sales_rep" | "tam" | "sales_manager" | "finance";
+  bio: string | null;
+  avatarUrl: string | null;
 };
 
 export async function getSessionUser(): Promise<SessionUser | null> {
@@ -26,5 +28,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     email: user.email,
     name: user.name,
     role: user.role,
+    bio: user.bio ?? null,
+    avatarUrl: user.avatarUrl ?? null,
   };
 }

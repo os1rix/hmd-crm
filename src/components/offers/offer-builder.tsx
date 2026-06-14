@@ -18,12 +18,21 @@ type LineItem = {
   unitPrice: string;
 };
 
+export type OfferBuilderInitial = {
+  lineItems: LineItem[];
+  discount: number;
+  selectionRationale?: string;
+  discountJustification?: string;
+  version?: number;
+};
+
 export function OfferBuilder({
   catalog,
   dealTitle,
   accountName,
   onSubmit,
   onDraft,
+  initial,
   compact = false,
 }: {
   catalog: Catalog | null;
@@ -31,17 +40,18 @@ export function OfferBuilder({
   accountName: string;
   onSubmit: (items: LineItem[], discount: number, justification: string) => Promise<void>;
   onDraft: (items: LineItem[], discount: number, justification: string) => Promise<void>;
+  initial?: OfferBuilderInitial;
   compact?: boolean;
 }) {
   const toast = useToast();
-  const [items, setItems] = useState<LineItem[]>([]);
+  const [items, setItems] = useState<LineItem[]>(initial?.lineItems ?? []);
   const [selectedProduct, setSelectedProduct] = useState("");
   const [selectedService, setSelectedService] = useState("");
   const [productQty, setProductQty] = useState(1);
   const [serviceQty, setServiceQty] = useState(1);
-  const [discount, setDiscount] = useState(0);
-  const [justification, setJustification] = useState("");
-  const [selectionRationale, setSelectionRationale] = useState("");
+  const [discount, setDiscount] = useState(initial?.discount ?? 0);
+  const [justification, setJustification] = useState(initial?.discountJustification ?? "");
+  const [selectionRationale, setSelectionRationale] = useState(initial?.selectionRationale ?? "");
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -108,6 +118,33 @@ export function OfferBuilder({
     return parts.join("\n\n") || undefined;
   }
 
+  function buildPendingItems(): LineItem[] {
+    const pending: LineItem[] = [];
+    if (selectedProduct && selectedProductRow && productQty >= 1) {
+      pending.push({
+        itemType: "product",
+        itemId: selectedProductRow.id,
+        name: selectedProductRow.name,
+        quantity: productQty,
+        unitPrice: selectedProductRow.unitPrice,
+      });
+    }
+    if (selectedService && selectedServiceRow && serviceQty >= 1) {
+      pending.push({
+        itemType: "service",
+        itemId: selectedServiceRow.id,
+        name: selectedServiceRow.name,
+        quantity: serviceQty,
+        unitPrice: selectedServiceRow.unitPrice,
+      });
+    }
+    return pending;
+  }
+
+  function effectiveItems(): LineItem[] {
+    return [...items, ...buildPendingItems()];
+  }
+
   async function draftWithAi() {
     if (!catalog) {
       toast("Catalog not loaded yet", "error");
@@ -128,12 +165,8 @@ export function OfferBuilder({
         toast("AI returned no line items — try adding manually", "error");
         return;
       }
-      if (!data.justification?.trim()) {
-        toast("AI draft missing rationale — try again", "error");
-        return;
-      }
       setItems(data.lineItems);
-      setSelectionRationale(data.justification);
+      setSelectionRationale(data.justification?.trim() ?? "");
       toast(data.source === "ai" ? "AI draft with rationale applied" : "Suggested draft applied");
     } catch (err) {
       toast(err instanceof Error ? err.message : "AI draft failed", "error");
@@ -142,38 +175,86 @@ export function OfferBuilder({
     }
   }
 
+  const linesForTotals = useMemo(() => {
+    const pending: LineItem[] = [];
+    if (selectedProduct && selectedProductRow && productQty >= 1) {
+      pending.push({
+        itemType: "product",
+        itemId: selectedProductRow.id,
+        name: selectedProductRow.name,
+        quantity: productQty,
+        unitPrice: selectedProductRow.unitPrice,
+      });
+    }
+    if (selectedService && selectedServiceRow && serviceQty >= 1) {
+      pending.push({
+        itemType: "service",
+        itemId: selectedServiceRow.id,
+        name: selectedServiceRow.name,
+        quantity: serviceQty,
+        unitPrice: selectedServiceRow.unitPrice,
+      });
+    }
+    return [...items, ...pending];
+  }, [
+    items,
+    selectedProduct,
+    selectedProductRow,
+    selectedService,
+    selectedServiceRow,
+    productQty,
+    serviceQty,
+  ]);
+
   const deviceTotal = useMemo(
     () =>
-      items
+      linesForTotals
         .filter((i) => i.itemType === "product")
         .reduce((sum, item) => sum + item.quantity * Number.parseFloat(item.unitPrice), 0),
-    [items],
+    [linesForTotals],
   );
 
   const serviceTotal = useMemo(
     () =>
-      items
+      linesForTotals
         .filter((i) => i.itemType === "service")
         .reduce((sum, item) => sum + item.quantity * Number.parseFloat(item.unitPrice), 0),
-    [items],
+    [linesForTotals],
   );
 
   const subtotal = deviceTotal + serviceTotal;
   const total = subtotal - (discount ? subtotal * (discount / 100) : 0);
+  const canSave = linesForTotals.length > 0;
 
   async function handleDraft() {
+    const lineItems = effectiveItems();
+    if (!lineItems.length) {
+      toast("Add at least one device or service line", "error");
+      return;
+    }
     setSubmitting(true);
     try {
-      await onDraft(items, discount, buildOfferNotes() ?? "");
+      await onDraft(lineItems, discount, buildOfferNotes() ?? "");
+      toast(initial?.version ? "Draft updated" : "Draft saved");
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Failed to save draft", "error");
     } finally {
       setSubmitting(false);
     }
   }
 
   async function handleSubmit() {
+    const lineItems = effectiveItems();
+    if (!lineItems.length) {
+      toast("Add at least one device or service line", "error");
+      return;
+    }
     setSubmitting(true);
     try {
-      await onSubmit(items, discount, buildOfferNotes() ?? "");
+      await onSubmit(lineItems, discount, buildOfferNotes() ?? "");
+      toast("Offer submitted for approval");
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Failed to submit offer", "error");
     } finally {
       setSubmitting(false);
     }
@@ -182,7 +263,9 @@ export function OfferBuilder({
   return (
     <div className={`border border-border bg-surface p-4 ${compact ? "" : "mt-4"}`}>
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-medium">Offer</h3>
+        <h3 className="text-sm font-medium">
+          {initial?.version ? `Edit draft v${initial.version}` : "Offer"}
+        </h3>
         <button
           type="button"
           onClick={draftWithAi}
@@ -206,10 +289,10 @@ export function OfferBuilder({
             </tr>
           </thead>
           <tbody>
-            {items.length === 0 && (
+            {items.length === 0 && !buildPendingItems().length && (
               <tr>
                 <td colSpan={6} className="p-4 text-center text-sm text-muted">
-                  No lines yet — add below or use Draft with AI
+                  No lines yet — select a device or service below and save, or use Draft with AI
                 </td>
               </tr>
             )}
@@ -246,6 +329,29 @@ export function OfferBuilder({
                     ✕
                   </button>
                 </td>
+              </tr>
+            ))}
+            {buildPendingItems().map((item, i) => (
+              <tr
+                key={`pending-${item.itemId}-${i}`}
+                className="border-b border-dashed border-border/60 bg-surface/10"
+              >
+                <td className="p-2">
+                  <span className={item.itemType === "product" ? "text-accent" : "text-[#06b6d4]"}>
+                    {item.itemType === "product" ? "Device" : "Service"}
+                  </span>
+                </td>
+                <td className="p-2 text-muted">{item.name}</td>
+                <td className="p-2 text-right font-mono text-sm tabular-nums text-muted">
+                  {item.quantity}
+                </td>
+                <td className="p-2 text-right font-mono tabular-nums text-muted">
+                  {formatEuro(item.unitPrice)}
+                </td>
+                <td className="p-2 text-right font-mono tabular-nums text-muted">
+                  {formatEuro(item.quantity * Number.parseFloat(item.unitPrice))}
+                </td>
+                <td className="p-2 text-center text-xs text-muted">pending</td>
               </tr>
             ))}
 
@@ -338,7 +444,7 @@ export function OfferBuilder({
               </>
             )}
           </tbody>
-          {items.length > 0 && (
+          {linesForTotals.length > 0 && (
             <tfoot className="text-xs">
               <tr className="border-t border-border">
                 <td colSpan={4} className="p-2 text-muted">
@@ -388,14 +494,16 @@ export function OfferBuilder({
       <div className="mt-3 grid gap-2">
         <input
           type="number"
-          placeholder="Discount %"
+          min={0}
+          max={100}
+          placeholder="Discount % (optional)"
           value={discount || ""}
-          onChange={(e) => setDiscount(Number(e.target.value))}
+          onChange={(e) => setDiscount(Math.max(0, Number(e.target.value) || 0))}
           className="border border-border bg-background px-3 py-2 text-sm"
         />
         {discount > 0 && (
           <input
-            placeholder="Discount justification"
+            placeholder="Discount justification (optional)"
             value={justification}
             onChange={(e) => setJustification(e.target.value)}
             className="border border-border bg-background px-3 py-2 text-sm"
@@ -404,15 +512,15 @@ export function OfferBuilder({
         <div className="flex gap-2">
           <button
             type="button"
-            disabled={!items.length || submitting}
+            disabled={!canSave || submitting}
             onClick={handleDraft}
             className="flex-1 border border-border py-2 text-sm hover:border-accent disabled:opacity-40"
           >
-            {submitting ? "Saving…" : "Save as draft"}
+            {submitting ? "Saving…" : initial?.version ? "Update draft" : "Save as draft"}
           </button>
           <button
             type="button"
-            disabled={!items.length || submitting}
+            disabled={!canSave || submitting}
             onClick={handleSubmit}
             className="flex-1 bg-accent py-2 text-sm font-medium text-accent-foreground disabled:opacity-40"
           >

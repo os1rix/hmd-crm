@@ -88,13 +88,15 @@ export function buildFallbackDraft(
   const qty = large ? 250 : 50;
 
   const device =
-    catalog.products.find((p) => p.name.includes("X2")) ??
-    catalog.products.find((p) => p.name.includes("X1")) ??
+    catalog.products.find((p) => p.name.includes("Terra")) ??
+    catalog.products.find((p) => p.name.includes("Ivalo")) ??
     catalog.products[0];
   const onboarding =
-    catalog.services.find((s) => s.name.toLowerCase().includes("mdm")) ?? catalog.services[0];
+    catalog.services.find((s) => s.name.toLowerCase().includes("core solutions")) ??
+    catalog.services[0];
   const support =
-    catalog.services.find((s) => s.name.toLowerCase().includes("support")) ?? catalog.services[1];
+    catalog.services.find((s) => s.name.toLowerCase().includes("secure partner")) ??
+    catalog.services[1];
 
   const items: ResolvedLineItem[] = [];
   if (device) {

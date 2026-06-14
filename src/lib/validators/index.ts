@@ -95,10 +95,45 @@ export const createOfferSchema = z.object({
   submitAsDraft: z.boolean().optional().default(false),
 });
 
+export const updateOfferSchema = z.object({
+  lineItems: z.array(offerLineItemSchema).min(1),
+  discountPercent: z.coerce.number().min(0).max(100).optional(),
+  discountJustification: z.string().max(2000).optional(),
+  submitAsDraft: z.boolean().optional().default(true),
+});
+
 export const approveOfferSchema = z.object({
   approvalId: z.string().uuid(),
   status: z.enum(["approved", "rejected"]),
   comment: z.string().max(1000).optional(),
+});
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: z.string().min(8).max(128),
+});
+
+export const updateSettingsSchema = z.object({
+  name: z.string().min(1).max(120).optional(),
+  bio: z.string().max(500).optional(),
+  avatarUrl: z.string().max(500_000).nullable().optional(),
+  preferences: z
+    .object({
+      language: z.enum(["en", "fi", "sv", "de"]).optional(),
+      appearance: z.enum(["dark", "light", "system"]).optional(),
+      notifications: z
+        .object({
+          dealApprovals: z.boolean().optional(),
+          offerSubmissions: z.boolean().optional(),
+          caseAssignments: z.boolean().optional(),
+          dealAtRisk: z.boolean().optional(),
+          financeReviews: z.boolean().optional(),
+          productUpdates: z.boolean().optional(),
+          weeklyDigest: z.boolean().optional(),
+        })
+        .optional(),
+    })
+    .optional(),
 });
 
 export type CreateAccountInput = z.infer<typeof createAccountSchema>;

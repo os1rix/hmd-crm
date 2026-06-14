@@ -1,3 +1,4 @@
+import type { UserPreferences } from "@/lib/user-preferences";
 import { relations } from "drizzle-orm";
 import {
   boolean,
@@ -57,6 +58,10 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   name: text("name").notNull(),
   role: userRoleEnum("role").notNull().default("sales_rep"),
+  bio: text("bio"),
+  avatarUrl: text("avatar_url"),
+  passwordHash: text("password_hash"),
+  preferences: jsonb("preferences").$type<UserPreferences>(),
   entraObjectId: text("entra_object_id").unique(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),

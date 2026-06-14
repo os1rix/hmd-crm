@@ -74,7 +74,11 @@ function accountOffersHref(deal: Deal) {
   return `/accounts/${deal.account.id}?tab=offers&deal=${deal.id}`;
 }
 
-export default function DealsPageClient({ user }: { user: SessionUser | null }) {
+export default function DealsPageClient({
+  user,
+}: {
+  user: SessionUser | null;
+}) {
   const toast = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();

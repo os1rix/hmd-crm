@@ -5,6 +5,7 @@ import { CardMoney } from "@/components/ui/card-money";
 import { EntityFilters, type FilterValues } from "@/components/ui/entity-filters";
 import { AccountsGridSkeleton, EntityFiltersSkeleton } from "@/components/ui/skeleton";
 import { STAGE_LABELS, dealTotalValue, isDealAtRisk } from "@/lib/deals";
+import { INDUSTRIES } from "@/lib/industries";
 import { MONEY } from "@/lib/money-labels";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -41,6 +42,7 @@ export default function AccountsPage() {
     const params = new URLSearchParams();
     if (filters.channel) params.set("channel", filters.channel);
     if (filters.owner) params.set("ownerId", filters.owner);
+    if (filters.segment) params.set("segment", filters.segment);
     if (filters.dateFrom) params.set("dateFrom", filters.dateFrom);
     const qs = params.toString();
 
@@ -75,6 +77,12 @@ export default function AccountsPage() {
           { value: "direct", label: "Direct" },
           { value: "reseller", label: "Reseller" },
         ],
+      },
+      {
+        key: "segment",
+        label: "Industry",
+        type: "select" as const,
+        options: INDUSTRIES.map((industry) => ({ value: industry, label: industry })),
       },
       {
         key: "owner",

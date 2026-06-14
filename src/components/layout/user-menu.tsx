@@ -45,7 +45,7 @@ export function UserMenu({
             : "flex items-center gap-2 border border-border bg-surface px-2 py-1.5 text-sm hover:border-card-hover"
         }
       >
-        <UserAvatar name={user.name} size={isSidebar ? "md" : "sm"} />
+        <UserAvatar name={user.name} imageUrl={user.avatarUrl} size={isSidebar ? "md" : "sm"} />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">{user.name}</p>
           {isSidebar && <p className="text-[11px] text-muted">{roleLabel(user.role)}</p>}
@@ -63,7 +63,7 @@ export function UserMenu({
           {!isSidebar && (
             <div className="border-b border-border px-4 py-3">
               <div className="flex items-center gap-3">
-                <UserAvatar name={user.name} />
+                <UserAvatar name={user.name} imageUrl={user.avatarUrl} />
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{user.name}</p>
                   <p className="text-xs text-muted">{roleLabel(user.role)}</p>
@@ -75,7 +75,10 @@ export function UserMenu({
             <button
               type="button"
               className="flex w-full items-center gap-3 px-4 py-2 text-sm text-muted hover:bg-surface hover:text-foreground"
-              onClick={() => setOpen(false)}
+              onClick={() => {
+                setOpen(false);
+                router.push("/settings");
+              }}
             >
               <Settings className="h-4 w-4" />
               Settings

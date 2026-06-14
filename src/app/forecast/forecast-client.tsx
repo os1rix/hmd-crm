@@ -69,7 +69,11 @@ export default function ForecastPageClient({
         const pending = rows.flatMap(
           (o: {
             id: string;
-            approvals: Array<{ id: string; approverRole: string; status: string }>;
+            approvals: Array<{
+              id: string;
+              approverRole: string;
+              status: string;
+            }>;
             account: { name: string };
             deal: { id: string; title: string } | null;
             total: string;

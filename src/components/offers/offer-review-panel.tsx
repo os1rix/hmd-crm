@@ -37,6 +37,7 @@ export function OfferReviewPanel({
   user,
   onApprove,
   onReject,
+  viewOnly = false,
 }: {
   offer: Offer;
   dealTitle: string;
@@ -45,6 +46,7 @@ export function OfferReviewPanel({
   user: SessionUser | null;
   onApprove: (approvalId: string) => void;
   onReject: (approvalId: string) => void;
+  viewOnly?: boolean;
 }) {
   const deviceLines = offer.lineItems.filter((l) => l.itemType === "product");
   const serviceLines = offer.lineItems.filter((l) => l.itemType === "service");
@@ -56,9 +58,11 @@ export function OfferReviewPanel({
     (s, l) => s + l.quantity * Number.parseFloat(l.unitPrice),
     0,
   );
-  const pendingApproval = offer.approvals.find(
-    (a) => a.status === "pending" && canDecideOfferApproval(user?.role, a),
-  );
+  const pendingApproval = viewOnly
+    ? undefined
+    : offer.approvals.find((a) => a.status === "pending" && canDecideOfferApproval(user?.role, a));
+  const discountPct = offer.discountPercent ? Number.parseFloat(offer.discountPercent) : 0;
+  const discountAmount = discountPct ? (deviceTotal + serviceTotal) * (discountPct / 100) : 0;
 
   return (
     <div className="space-y-5">
@@ -156,6 +160,30 @@ export function OfferReviewPanel({
                 {formatEuro(serviceTotal)}
               </td>
             </tr>
+            <tr className="border-t border-border">
+              <td colSpan={4} className="p-2 text-muted">
+                Subtotal
+              </td>
+              <td className="p-2 text-right font-mono tabular-nums">
+                {formatEuro(deviceTotal + serviceTotal)}
+              </td>
+            </tr>
+            {discountPct > 0 && (
+              <tr>
+                <td colSpan={4} className="p-2 text-warning">
+                  Discount ({offer.discountPercent}%)
+                </td>
+                <td className="p-2 text-right font-mono tabular-nums text-warning">
+                  −{formatEuro(discountAmount)}
+                </td>
+              </tr>
+            )}
+            <tr className="text-sm font-medium">
+              <td colSpan={4} className="p-2">
+                Offer total
+              </td>
+              <td className="p-2 text-right font-mono tabular-nums">{formatEuro(offer.total)}</td>
+            </tr>
           </tfoot>
         </table>
       </div>
@@ -176,26 +204,29 @@ export function OfferReviewPanel({
         </div>
       </div>
 
-      {pendingApproval ? (
-        <div className="flex gap-2 border border-border bg-surface/30 p-4">
-          <button
-            type="button"
-            onClick={() => onApprove(pendingApproval.id)}
-            className="flex-1 bg-accent py-2.5 text-sm font-medium text-accent-foreground hover:bg-accent/90"
-          >
-            Approve offer
-          </button>
-          <button
-            type="button"
-            onClick={() => onReject(pendingApproval.id)}
-            className="flex-1 border border-danger/50 py-2.5 text-sm font-medium text-danger hover:bg-danger/10"
-          >
-            Reject offer
-          </button>
-        </div>
-      ) : (
-        <p className="text-sm text-muted">No pending approval step for your role on this offer.</p>
-      )}
+      {!viewOnly &&
+        (pendingApproval ? (
+          <div className="flex gap-2 border border-border bg-surface/30 p-4">
+            <button
+              type="button"
+              onClick={() => onApprove(pendingApproval.id)}
+              className="flex-1 bg-accent py-2.5 text-sm font-medium text-accent-foreground hover:bg-accent/90"
+            >
+              Approve offer
+            </button>
+            <button
+              type="button"
+              onClick={() => onReject(pendingApproval.id)}
+              className="flex-1 border border-danger/50 py-2.5 text-sm font-medium text-danger hover:bg-danger/10"
+            >
+              Reject offer
+            </button>
+          </div>
+        ) : (
+          <p className="text-sm text-muted">
+            No pending approval step for your role on this offer.
+          </p>
+        ))}
     </div>
   );
 }

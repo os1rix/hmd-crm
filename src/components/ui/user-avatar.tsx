@@ -15,11 +15,13 @@ function colorIndex(name: string): number {
 
 export function UserAvatar({
   name,
+  imageUrl,
   size = "md",
   className = "",
 }: {
   name: string;
-  size?: "sm" | "md" | "lg";
+  imageUrl?: string | null;
+  size?: "sm" | "md" | "lg" | "xl";
   className?: string;
 }) {
   const initials = name
@@ -30,7 +32,24 @@ export function UserAvatar({
     .toUpperCase();
   const color = AVATAR_COLORS[colorIndex(name)];
   const sizeClass =
-    size === "sm" ? "h-7 w-7 text-[10px]" : size === "lg" ? "h-10 w-10 text-sm" : "h-8 w-8 text-xs";
+    size === "sm"
+      ? "h-7 w-7 text-[10px]"
+      : size === "lg"
+        ? "h-10 w-10 text-sm"
+        : size === "xl"
+          ? "h-20 w-20 text-xl"
+          : "h-8 w-8 text-xs";
+
+  if (imageUrl) {
+    return (
+      <img
+        src={imageUrl}
+        alt={name}
+        title={name}
+        className={`shrink-0 object-cover ${sizeClass} ${className}`}
+      />
+    );
+  }
 
   return (
     <div

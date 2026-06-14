@@ -2,18 +2,10 @@ import { db } from "@/db";
 import { notifications, offerApprovals, offers } from "@/db/schema";
 import { apiError, apiSuccess, parseJsonBody, validationErrorResponse } from "@/lib/api";
 import { canDecideOfferApproval } from "@/lib/offer-approvals";
+import { calcOfferTotals } from "@/lib/offer-totals";
 import { getSessionUser } from "@/lib/session";
 import { approveOfferSchema, createOfferSchema } from "@/lib/validators";
 import { and, desc, eq } from "drizzle-orm";
-
-function calcTotal(lineItems: { quantity: number; unitPrice: string }[], discount?: number) {
-  const subtotal = lineItems.reduce(
-    (sum, item) => sum + item.quantity * Number.parseFloat(item.unitPrice),
-    0,
-  );
-  const discountAmount = discount ? subtotal * (discount / 100) : 0;
-  return { subtotal, total: subtotal - discountAmount };
-}
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -48,7 +40,7 @@ export async function POST(request: Request) {
   const parsed = await parseJsonBody(request, createOfferSchema);
   if (!parsed.success) return validationErrorResponse(parsed.error);
 
-  const { subtotal, total } = calcTotal(parsed.data.lineItems, parsed.data.discountPercent);
+  const { subtotal, total } = calcOfferTotals(parsed.data.lineItems, parsed.data.discountPercent);
   const isDraft = parsed.data.submitAsDraft;
 
   let version = 1;
@@ -70,10 +62,10 @@ export async function POST(request: Request) {
         createdById: user.id,
         version,
         lineItems: parsed.data.lineItems,
-        subtotal: subtotal.toFixed(2),
+        subtotal,
         discountPercent: parsed.data.discountPercent?.toFixed(2),
         discountJustification: parsed.data.discountJustification,
-        total: total.toFixed(2),
+        total,
         status: isDraft ? "draft" : "submitted",
         isLocked: !isDraft,
       })

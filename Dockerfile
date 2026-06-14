@@ -39,6 +39,8 @@ COPY --from=builder /app/drizzle ./db-setup/drizzle
 COPY --from=builder /app/drizzle.config.ts ./db-setup/drizzle.config.ts
 COPY --from=builder /app/scripts/seed.ts ./db-setup/scripts/seed.ts
 COPY --from=builder /app/src/db ./db-setup/src/db
+COPY --from=builder /app/src/lib ./db-setup/src/lib
+COPY --from=builder /app/tsconfig.json ./db-setup/tsconfig.json
 COPY --from=builder /app/package.json ./db-setup/package.json
 COPY --from=builder /app/db-setup/setup.mjs ./db-setup/setup.mjs
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/start.mjs ./scripts/start.mjs

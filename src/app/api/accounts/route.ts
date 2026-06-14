@@ -13,6 +13,7 @@ export async function GET(request: Request) {
     const channel = url.searchParams.get("channel");
     const ownerId = url.searchParams.get("ownerId");
     const dateFrom = url.searchParams.get("dateFrom");
+    const segment = url.searchParams.get("segment");
 
     const rows = await db.query.accounts.findMany({
       where: and(
@@ -21,6 +22,7 @@ export async function GET(request: Request) {
           ? eq(accounts.channel, channel as (typeof accounts.channel.enumValues)[number])
           : undefined,
         ownerId ? eq(accounts.ownerId, ownerId) : undefined,
+        segment ? eq(accounts.segment, segment) : undefined,
         dateFrom ? gte(accounts.createdAt, parseFilterDateStart(dateFrom)) : undefined,
       ),
       orderBy: [desc(accounts.updatedAt)],

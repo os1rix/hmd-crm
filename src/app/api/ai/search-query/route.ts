@@ -97,8 +97,10 @@ export async function POST(request: Request) {
       }
     }
 
-    if (/enterprise/i.test(q)) {
-      for (const a of allAccounts.filter((a) => a.segment === "Enterprise").slice(0, 5)) {
+    if (/enterprise|industrial/i.test(q)) {
+      for (const a of allAccounts
+        .filter((a) => a.segment === "Enterprise & Industrial")
+        .slice(0, 5)) {
         results.push({
           type: "account",
           id: a.id,
