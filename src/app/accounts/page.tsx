@@ -79,7 +79,7 @@ export default function AccountsPage() {
               <Link
                 key={account.id}
                 href={`/accounts/${account.id}`}
-                className="rounded-xl border border-border bg-card p-5 transition hover:border-accent"
+                className="rounded-xl border border-border p-5 transition hover:border-accent"
               >
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <h2 className="font-semibold">{account.name}</h2>

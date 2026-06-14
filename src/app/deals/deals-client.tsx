@@ -193,10 +193,7 @@ export default function DealsPageClient() {
         {stages.map((stage) => {
           const column = deals.filter((d) => d.stage === stage);
           return (
-            <div
-              key={stage}
-              className="min-w-[240px] flex-1 rounded-xl border border-border bg-sidebar p-3"
-            >
+            <div key={stage} className="min-w-[240px] flex-1 rounded-xl border border-border p-3">
               <h3 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted">
                 {STAGE_LABELS[stage as keyof typeof STAGE_LABELS]} ({column.length})
               </h3>
@@ -206,7 +203,7 @@ export default function DealsPageClient() {
                     key={deal.id}
                     type="button"
                     onClick={() => openDeal(deal)}
-                    className="w-full rounded-lg border border-border bg-card p-3 text-left hover:border-accent"
+                    className="w-full rounded-lg border border-border p-3 text-left hover:border-accent"
                   >
                     <p className="text-sm font-medium">{deal.account.name}</p>
                     <p className="text-xs text-muted">{deal.title}</p>
@@ -219,7 +216,7 @@ export default function DealsPageClient() {
                       </span>
                       {isDealAtRisk(deal as never) && <Badge variant="warning">At risk</Badge>}
                     </div>
-                    <div className="mt-2 flex h-6 w-6 items-center justify-center rounded-full bg-accent-muted text-[10px] font-bold text-accent">
+                    <div className="mt-2 flex h-6 w-6 items-center justify-center rounded-full border border-accent/30 text-[10px] font-bold text-accent">
                       {initials(deal.owner.name)}
                     </div>
                   </button>
@@ -237,7 +234,7 @@ export default function DealsPageClient() {
       >
         {selected && (
           <div className="space-y-6">
-            <div className="rounded-xl border border-accent/40 bg-accent-muted/30 p-4">
+            <div className="rounded-xl border border-accent/40 p-4">
               <p className="mb-1 text-xs font-medium uppercase text-accent">AI next best action</p>
               {aiLoading ? (
                 <p className="text-sm text-muted">Generating recommendations…</p>
@@ -335,7 +332,7 @@ export default function DealsPageClient() {
               <button
                 type="button"
                 onClick={saveForecast}
-                className="mt-3 rounded-lg bg-accent px-3 py-2 text-sm font-medium text-white"
+                className="mt-3 rounded-lg bg-accent px-3 py-2 text-sm font-medium text-accent-foreground"
               >
                 Save forecast
               </button>
@@ -419,7 +416,7 @@ export default function DealsPageClient() {
                 <button
                   type="button"
                   onClick={submitOffer}
-                  className="rounded-lg bg-accent px-3 py-2 text-sm font-medium text-white"
+                  className="rounded-lg bg-accent px-3 py-2 text-sm font-medium text-accent-foreground"
                 >
                   Submit for approval
                 </button>

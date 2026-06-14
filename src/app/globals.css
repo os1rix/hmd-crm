@@ -3,24 +3,37 @@
 @tailwind utilities;
 
 :root {
-  --background: #0e0f12;
-  --foreground: #f1f5f9;
-  --sidebar: #14161a;
-  --card: #1c1f26;
-  --accent: #2d7eff;
-  --accent-muted: #1e3a5f;
+  /* HMD Secure brand palette */
+  --black: #000000;
+  --white: #ffffff;
+  --lime: #e4ff00;
+  --antracite: #242426;
+  --dirty-white: #fafafa;
+  --low-gray: #5e5e5e;
+  --disabled: #433e40;
+
+  /* CRM semantic tokens (dark theme) */
+  --background: var(--black);
+  --foreground: var(--white);
+  --sidebar: var(--black);
+  --card: transparent;
+  --card-border: #333336;
+  --card-hover: #3a3a3e;
+  --accent: var(--lime);
+  --accent-muted: #2a2a00;
+  --accent-foreground: var(--black);
   --warning: #f59e0b;
   --success: #22c55e;
   --danger: #ef4444;
-  --teal: #14b8a6;
-  --border: #2a2f3a;
-  --muted: #94a3b8;
+  --border: #333336;
+  --muted: var(--low-gray);
+  --section: #6b6b6b;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-inter), system-ui, sans-serif;
+  font-family: var(--font-inter), Inter, system-ui, sans-serif;
 }
 
 .tabular-nums {

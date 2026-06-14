@@ -96,7 +96,7 @@ export default function AccountDetailPage() {
           <h2 className="mb-3 font-medium">Open deals</h2>
           <div className="space-y-3">
             {account.deals.map((deal) => (
-              <div key={deal.id} className="rounded-xl border border-border bg-card p-4">
+              <div key={deal.id} className="rounded-xl border border-border p-4">
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="font-medium">{deal.title}</p>
@@ -107,7 +107,7 @@ export default function AccountDetailPage() {
                   </span>
                 </div>
                 {aiActions[deal.id] && (
-                  <div className="mt-3 rounded-lg border border-accent/30 bg-accent-muted/40 p-3 text-sm">
+                  <div className="mt-3 rounded-lg border border-accent/30 p-3 text-sm">
                     <p className="mb-1 text-xs font-medium uppercase text-accent">AI next action</p>
                     <p>{aiActions[deal.id].action}</p>
                   </div>
@@ -123,7 +123,7 @@ export default function AccountDetailPage() {
             {account.cases
               .filter((c) => c.status !== "closed" && c.status !== "resolved")
               .map((c) => (
-                <div key={c.id} className="rounded-lg border border-border bg-card px-4 py-3">
+                <div key={c.id} className="rounded-lg border border-border px-4 py-3">
                   <p className="font-medium">{c.title}</p>
                   <div className="mt-1 flex gap-2">
                     <Badge>{c.status}</Badge>
@@ -141,7 +141,7 @@ export default function AccountDetailPage() {
         <h2 className="mb-4 font-medium">Activity timeline</h2>
         <div className="flex-1 space-y-4 overflow-y-auto scrollbar-thin">
           {timeline.map((item) => (
-            <div key={item.id} className="rounded-lg border border-border bg-card p-4">
+            <div key={item.id} className="rounded-lg border border-border p-4">
               <div className="mb-2 flex items-center justify-between text-xs text-muted">
                 <span>
                   {item.who}{" "}
@@ -154,7 +154,7 @@ export default function AccountDetailPage() {
           ))}
         </div>
 
-        <div className="mt-6 rounded-xl border border-border bg-card p-4">
+        <div className="mt-6 rounded-xl border border-border p-4">
           <h3 className="mb-2 text-sm font-medium">Paste meeting notes</h3>
           <textarea
             value={meetingNotes}
@@ -166,7 +166,7 @@ export default function AccountDetailPage() {
           <button
             type="button"
             onClick={parseMeetingNotes}
-            className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-white"
+            className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground"
           >
             Extract with AI
           </button>

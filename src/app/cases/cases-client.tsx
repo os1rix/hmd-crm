@@ -94,7 +94,7 @@ export default function CasesPageClient() {
                 setSelected(c);
                 setSummary("");
               }}
-              className="flex w-full items-center gap-4 rounded-xl border border-border bg-card p-4 text-left hover:border-accent"
+              className="flex w-full items-center gap-4 rounded-xl border border-border p-4 text-left hover:border-accent"
             >
               <div
                 className={`w-1 self-stretch rounded-full ${
@@ -136,9 +136,7 @@ export default function CasesPageClient() {
                   Summarize with AI
                 </button>
                 {summary && (
-                  <div className="rounded-lg border border-accent/30 bg-accent-muted/20 p-3 text-sm">
-                    {summary}
-                  </div>
+                  <div className="rounded-lg border border-accent/30 p-3 text-sm">{summary}</div>
                 )}
               </div>
             )}

@@ -3,6 +3,7 @@ import { deals } from "@/db/schema";
 import type { QuarterlyForecastEntry } from "@/db/schema";
 import { apiError, apiSuccess } from "@/lib/api";
 import { STAGE_PROBABILITY, dealTotalValue } from "@/lib/deals";
+import { sortQuarters } from "@/lib/quarters";
 
 export async function GET() {
   try {
@@ -34,9 +35,9 @@ export async function GET() {
       }
     }
 
-    const chart = [...quarters.entries()]
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([quarter, values]) => ({ quarter, ...values }));
+    const chart = sortQuarters(
+      [...quarters.entries()].map(([quarter, values]) => ({ quarter, ...values })),
+    );
 
     const totalPipeline = rows.reduce((sum, d) => sum + dealTotalValue(d.quarterlyForecast), 0);
     const weightedPipeline = rows.reduce(

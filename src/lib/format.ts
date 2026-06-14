@@ -25,12 +25,30 @@ export function formatRelative(value: Date | string): string {
 
 export function roleLabel(role: string): string {
   const labels: Record<string, string> = {
-    sales_rep: "Sales Rep",
+    sales_rep: "Rep",
     tam: "TAM",
-    sales_manager: "Sales Manager",
+    sales_manager: "Manager",
     finance: "Finance",
   };
   return labels[role] ?? role;
+}
+
+export function rolePillClass(_role: string): string {
+  return "border-border text-dirty-white";
+}
+
+export function formatToday(): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date());
+}
+
+export function daysSinceUpdate(date: Date | string | null | undefined): number {
+  if (!date) return 0;
+  return Math.floor((Date.now() - new Date(date).getTime()) / (1000 * 60 * 60 * 24));
 }
 
 export function initials(name: string): string {

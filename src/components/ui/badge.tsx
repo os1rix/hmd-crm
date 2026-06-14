@@ -1,3 +1,13 @@
+import { StatusChip, type StatusChipVariant } from "./status-chip";
+
+const BADGE_TO_CHIP: Record<string, StatusChipVariant> = {
+  default: "normal",
+  warning: "at-risk",
+  success: "on-track",
+  danger: "high",
+  accent: "open",
+};
+
 export function Badge({
   children,
   variant = "default",
@@ -5,18 +15,5 @@ export function Badge({
   children: React.ReactNode;
   variant?: "default" | "warning" | "success" | "danger" | "accent";
 }) {
-  const styles = {
-    default: "bg-card border-border text-muted",
-    warning: "bg-warning/15 text-warning border-warning/30",
-    success: "bg-success/15 text-success border-success/30",
-    danger: "bg-danger/15 text-danger border-danger/30",
-    accent: "bg-accent-muted text-accent border-accent/30",
-  };
-  return (
-    <span
-      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${styles[variant]}`}
-    >
-      {children}
-    </span>
-  );
+  return <StatusChip variant={BADGE_TO_CHIP[variant]}>{children}</StatusChip>;
 }

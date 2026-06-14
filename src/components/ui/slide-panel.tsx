@@ -32,7 +32,7 @@ export function SlidePanel({
         className="flex-1 bg-black/50"
         onClick={onClose}
       />
-      <div className="flex h-full w-full max-w-xl flex-col border-l border-border bg-card shadow-2xl">
+      <div className="flex h-full w-full max-w-xl flex-col border-l border-border bg-background shadow-2xl">
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <h2 className="text-lg font-semibold">{title}</h2>
           <button

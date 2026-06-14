@@ -50,7 +50,7 @@ export default function CatalogPage() {
         List prices with volume and reseller discounts for offer building.
       </p>
 
-      <section className="mb-8 rounded-xl border border-border bg-card p-5">
+      <section className="mb-8 rounded-xl border border-border p-5">
         <h2 className="mb-3 text-lg font-medium">Discount calculator</h2>
         <div className="mb-4 flex flex-wrap gap-4">
           <label className="text-sm">
@@ -93,7 +93,7 @@ export default function CatalogPage() {
           <h2 className="mb-4 text-lg font-medium">Devices & products</h2>
           <div className="space-y-3">
             {catalog.products.map((p) => (
-              <div key={p.id} className="rounded-xl border border-border bg-card p-4">
+              <div key={p.id} className="rounded-xl border border-border p-4">
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <p className="font-medium">{p.name}</p>
@@ -121,7 +121,7 @@ export default function CatalogPage() {
           <h2 className="mb-4 text-lg font-medium">Services</h2>
           <div className="space-y-3">
             {catalog.services.map((s) => (
-              <div key={s.id} className="rounded-xl border border-border bg-card p-4">
+              <div key={s.id} className="rounded-xl border border-border p-4">
                 <p className="font-medium">{s.name}</p>
                 <div className="mt-2 flex gap-2">
                   <Badge>{s.serviceType.replaceAll("_", " ")}</Badge>

@@ -8,7 +8,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
-  title: "HMD CRM",
+  title: "HMD Secure CRM",
   description: "AI-native CRM for HMD Secure",
 };
 
@@ -21,7 +21,7 @@ export default async function RootLayout({
 
   return (
     <html lang="en">
-      <body className={`${inter.variable} ${mono.variable} antialiased`}>
+      <body className={`${inter.variable} ${mono.variable} h-screen overflow-hidden antialiased`}>
         <AppShell user={user}>{children}</AppShell>
       </body>
     </html>

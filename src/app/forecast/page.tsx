@@ -1,9 +1,15 @@
 "use client";
 
+import { ApprovalQueue } from "@/components/dashboard/approval-queue";
+import { NarrativeCard } from "@/components/dashboard/narrative-card";
 import { ForecastChart } from "@/components/forecast/forecast-chart";
-import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { KpiCard } from "@/components/ui/kpi-card";
+import { SectionHeader } from "@/components/ui/section-header";
+import { Skeleton } from "@/components/ui/skeleton";
 import { fetchJson } from "@/lib/fetch-client";
 import { formatEuro } from "@/lib/format";
+import { AlertTriangle, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
 
 type ForecastData = {
@@ -19,9 +25,21 @@ type ForecastData = {
   stalled: Array<{ id: string; title: string; account: { name: string } }>;
 };
 
+type Approval = {
+  id: string;
+  offer: {
+    id: string;
+    total: string;
+    discountPercent: string | null;
+    account: { name: string };
+    deal: { id: string; title: string } | null;
+    createdBy: { name: string } | null;
+  };
+};
+
 export default function ForecastPage() {
   const [data, setData] = useState<ForecastData | null>(null);
-  const [narrative, setNarrative] = useState("");
+  const [approvals, setApprovals] = useState<Approval[]>([]);
 
   useEffect(() => {
     fetchJson<ForecastData>("/api/forecast", {
@@ -30,24 +48,39 @@ export default function ForecastPage() {
       weightedPipeline: 0,
       stalled: [],
     }).then(setData);
-  }, []);
 
-  async function regenerate() {
-    if (!data) return;
-    const res = await fetch("/api/ai/forecast-narrative", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        summary: {
-          totalPipeline: data.totalPipeline,
-          weightedPipeline: data.weightedPipeline,
-          stalled: data.stalled.length,
-        },
-      }),
-    });
-    const json = await res.json();
-    setNarrative(json.narrative ?? "");
-  }
+    fetch("/api/offers")
+      .then((r) => r.json())
+      .then((json) => {
+        const rows = json.data ?? json;
+        const pending = rows.flatMap(
+          (o: {
+            id: string;
+            approvals: Array<{ id: string; approverRole: string; status: string }>;
+            account: { name: string };
+            deal: { id: string; title: string } | null;
+            total: string;
+            discountPercent: string | null;
+            createdBy: { name: string } | null;
+          }) =>
+            o.approvals
+              .filter((a) => a.status === "pending" && a.approverRole === "finance")
+              .map((a) => ({
+                id: a.id,
+                offer: {
+                  id: o.id,
+                  total: o.total,
+                  discountPercent: o.discountPercent,
+                  account: o.account,
+                  deal: o.deal,
+                  createdBy: o.createdBy,
+                },
+              })),
+        );
+        setApprovals(pending);
+      })
+      .catch(() => setApprovals([]));
+  }, []);
 
   function exportCsv() {
     if (!data) return;
@@ -70,7 +103,19 @@ export default function ForecastPage() {
     a.click();
   }
 
-  if (!data) return <div className="p-6 text-muted">Loading forecast…</div>;
+  if (!data) {
+    return (
+      <div className="space-y-4 p-6">
+        <Skeleton className="h-8 w-64" />
+        <div className="grid gap-4 md:grid-cols-3">
+          <Skeleton className="h-24" />
+          <Skeleton className="h-24" />
+          <Skeleton className="h-24" />
+        </div>
+        <Skeleton className="h-48" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
@@ -86,45 +131,34 @@ export default function ForecastPage() {
       </div>
 
       <div className="mb-6 grid gap-4 md:grid-cols-3">
-        <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-xs text-muted">Total pipeline</p>
-          <p className="font-mono text-2xl tabular-nums">{formatEuro(data.totalPipeline)}</p>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-xs text-muted">Weighted pipeline</p>
-          <p className="font-mono text-2xl tabular-nums text-accent">
-            {formatEuro(data.weightedPipeline)}
-          </p>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-xs text-muted">Stalled deals</p>
-          <p className="font-mono text-2xl tabular-nums text-warning">{data.stalled.length}</p>
-        </div>
+        <KpiCard label="Total pipeline" value={formatEuro(data.totalPipeline)} icon={TrendingUp} />
+        <KpiCard
+          label="Weighted pipeline"
+          value={formatEuro(data.weightedPipeline)}
+          icon={TrendingUp}
+          trend="up"
+        />
+        <KpiCard
+          label="Stalled deals"
+          value={data.stalled.length}
+          icon={AlertTriangle}
+          trend="down"
+        />
       </div>
 
-      <div className="mb-6 rounded-xl border border-border bg-card p-4">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-sm font-medium">AI pipeline narrative</h2>
-          <button
-            type="button"
-            onClick={regenerate}
-            className="text-xs text-accent hover:underline"
-          >
-            Regenerate
-          </button>
-        </div>
-        <p className="text-sm text-muted">
-          {narrative || "Click regenerate for an AI summary of pipeline health."}
-        </p>
-      </div>
+      <NarrativeCard
+        summary={{
+          totalPipeline: data.totalPipeline,
+          weightedPipeline: data.weightedPipeline,
+          stalled: data.stalled.length,
+        }}
+      />
 
       <ForecastChart data={data.chart} />
 
       <section className="mt-8">
-        <h2 className="mb-3 text-lg font-medium">Pending finance approvals</h2>
-        <p className="text-sm text-muted">
-          Approve discounted offers from the deals pipeline or manager dashboard.
-        </p>
+        <SectionHeader>Pending finance approvals</SectionHeader>
+        <ApprovalQueue approvals={approvals} />
       </section>
     </div>
   );

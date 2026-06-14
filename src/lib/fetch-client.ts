@@ -13,6 +13,9 @@ export async function fetchJson<T>(url: string, fallback: T): Promise<T> {
     const response = await fetch(url);
     const data = await response.json();
     if (data && typeof data === "object" && "error" in data) return fallback;
+    if (data && typeof data === "object" && "data" in data && data.data != null) {
+      return data.data as T;
+    }
     return (data as T) ?? fallback;
   } catch {
     return fallback;
