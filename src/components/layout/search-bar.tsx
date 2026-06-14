@@ -1,6 +1,7 @@
 "use client";
 
 import { Card } from "@/components/ui/card";
+import { SearchResultsSkeleton } from "@/components/ui/skeleton";
 import { Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -110,11 +111,11 @@ export function SearchBar() {
           if (e.key === "Escape") setOpen(false);
         }}
         placeholder="Search accounts, deals, cases…"
-        className="w-full rounded-full border border-border px-4 py-2 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/30"
+        className="w-full rounded-full border border-border/60 bg-dirty-white px-4 py-2 text-sm text-black placeholder:text-low-gray focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/30"
       />
       {open && query.trim() && (
-        <Card className="absolute left-0 right-0 top-full z-50 mt-2 max-h-96 overflow-y-auto shadow-xl">
-          {loading && <p className="px-4 py-3 text-xs text-muted">Searching…</p>}
+        <Card className="absolute left-0 right-0 top-full z-50 mt-2 max-h-96 overflow-y-auto bg-black shadow-xl">
+          {loading && <SearchResultsSkeleton />}
           {!loading && aiAnswer && (
             <div className="border-b border-border px-4 py-3">
               <div className="mb-1 flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-section">

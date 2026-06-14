@@ -5,6 +5,7 @@ import {
   cases,
   contacts,
   deals,
+  newsPosts,
   notes,
   notifications,
   offerApprovals,
@@ -79,27 +80,69 @@ const IDS = {
   offer6: "77777777-7777-4777-8777-777777777706",
 };
 
-const quarters = [
-  "Q1 2025",
-  "Q2 2025",
-  "Q3 2025",
-  "Q4 2025",
-  "Q1 2026",
-  "Q2 2026",
-  "Q3 2026",
-  "Q4 2026",
-  "Q1 2027",
-  "Q2 2027",
-  "Q3 2027",
-  "Q4 2027",
-];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-function forecast(device: number, service: number) {
-  return quarters.map((quarter) => ({
-    quarter,
-    deviceRevenue: device,
-    serviceRevenue: service,
-  }));
+function monthLabel(year: number, month: number): string {
+  return `${MONTHS[month - 1]} ${year}`;
+}
+
+/** Build 36 monthly forecast entries with varied device/service revenue. */
+function realisticForecast(
+  dealIndex: number,
+  annualDevice: number,
+  annualService: number,
+  stage: string,
+) {
+  const monthlyDevice = annualDevice / 12;
+  const monthlyService = annualService / 12;
+  const entries: Array<{ quarter: string; deviceRevenue: number; serviceRevenue: number }> = [];
+
+  const startMonthOffset =
+    stage === "interest_shown"
+      ? 5
+      : stage === "rfi_answered"
+        ? 3
+        : stage === "rfp_offer_given"
+          ? 1
+          : 0;
+
+  for (let i = 0; i < 36; i++) {
+    if (i < startMonthOffset) continue;
+
+    const year = 2025 + Math.floor(i / 12);
+    const month = (i % 12) + 1;
+
+    const wave =
+      1 +
+      Math.sin(dealIndex * 1.73 + i * 0.91) * 0.38 +
+      Math.cos(dealIndex * 0.67 + i * 1.27) * 0.26;
+    const spike = (i + dealIndex) % 7 === 0 ? 1.55 : (i + dealIndex) % 11 === 0 ? 0.62 : 1;
+    const season =
+      month === 12 || month === 11
+        ? 1.32
+        : month === 1 || month === 8
+          ? 0.78
+          : month === 6
+            ? 0.88
+            : 1;
+    const yearGrowth = 1 + (year - 2025) * (0.04 + (dealIndex % 5) * 0.012);
+
+    let stageMul = 1;
+    if (stage === "won" && i >= 24) stageMul = 0.15 + (35 - i) * 0.04;
+    if (stage === "lost" && i >= 12) stageMul = 0.08;
+
+    const serviceSkew = 1 + Math.sin(dealIndex + i * 0.4) * 0.18;
+
+    entries.push({
+      quarter: monthLabel(year, month),
+      deviceRevenue: Math.round(monthlyDevice * wave * spike * season * yearGrowth * stageMul),
+      serviceRevenue: Math.round(
+        monthlyService * wave * spike * season * yearGrowth * stageMul * serviceSkew,
+      ),
+    });
+  }
+
+  return entries;
 }
 
 const daysAgo = (n: number) => new Date(Date.now() - n * 24 * 60 * 60 * 1000);
@@ -108,6 +151,7 @@ const daysAhead = (n: number) => new Date(Date.now() + n * 24 * 60 * 60 * 1000);
 async function seed() {
   console.log("Clearing existing data…");
   await db.delete(notifications);
+  await db.delete(newsPosts);
   await db.delete(activityLog);
   await db.delete(offerApprovals);
   await db.delete(offers);
@@ -169,6 +213,7 @@ async function seed() {
       id: IDS.svc1,
       name: "MDM Onboarding",
       description: "Device enrollment and policy setup",
+      unitPrice: "15000.00",
       serviceType: "internal",
       invoicingModel: "one_off",
     },
@@ -176,6 +221,7 @@ async function seed() {
       id: IDS.svc2,
       name: "24/7 SOC Monitoring",
       description: "Security operations center",
+      unitPrice: "8500.00",
       serviceType: "internal",
       invoicingModel: "monthly_recurring",
     },
@@ -183,6 +229,7 @@ async function seed() {
       id: IDS.svc3,
       name: "Penetration Testing",
       description: "Annual pen test engagement",
+      unitPrice: "25000.00",
       serviceType: "third_party",
       invoicingModel: "fixed_term",
     },
@@ -190,6 +237,7 @@ async function seed() {
       id: IDS.svc4,
       name: "Premium Support",
       description: "4h SLA technical support",
+      unitPrice: "3500.00",
       serviceType: "internal",
       invoicingModel: "monthly_recurring",
     },
@@ -197,6 +245,7 @@ async function seed() {
       id: IDS.svc5,
       name: "Compliance Audit",
       description: "ISO 27001 readiness review",
+      unitPrice: "12000.00",
       serviceType: "third_party",
       invoicingModel: "one_off",
     },
@@ -277,6 +326,114 @@ async function seed() {
       ownerId: IDS.rep1,
     },
   ];
+
+  const extraAccountRows = [
+    {
+      name: "Rhine Manufacturing AG",
+      segment: "Manufacturing",
+      region: "DACH",
+      channel: "direct" as const,
+    },
+    {
+      name: "Mediterranean Ports SA",
+      segment: "Logistics",
+      region: "Southern Europe",
+      channel: "direct" as const,
+    },
+    {
+      name: "Nordic Gov IT",
+      segment: "Public Sector",
+      region: "Nordics",
+      channel: "direct" as const,
+    },
+    { name: "Central EU Pharma", segment: "Healthcare", region: "CEE", channel: "direct" as const },
+    {
+      name: "Alpine Hospitality Group",
+      segment: "Hospitality",
+      region: "DACH",
+      channel: "reseller" as const,
+    },
+    {
+      name: "Atlantic Fisheries Co",
+      segment: "Maritime",
+      region: "UK",
+      channel: "direct" as const,
+    },
+    {
+      name: "Baltic Defence Systems",
+      segment: "Public Sector",
+      region: "Baltics",
+      channel: "reseller" as const,
+    },
+    {
+      name: "Iberia Smart Cities",
+      segment: "Smart City",
+      region: "Southern Europe",
+      channel: "direct" as const,
+    },
+    { name: "Nordic EduTech", segment: "Education", region: "Nordics", channel: "direct" as const },
+    {
+      name: "Benelux Transport NV",
+      segment: "Logistics",
+      region: "Benelux",
+      channel: "reseller" as const,
+    },
+    {
+      name: "Scandinavian Energy Grid",
+      segment: "Energy",
+      region: "Nordics",
+      channel: "direct" as const,
+    },
+    {
+      name: "Eastern EU Retail Chain",
+      segment: "Retail",
+      region: "CEE",
+      channel: "reseller" as const,
+    },
+    {
+      name: "Finnish Municipal IT",
+      segment: "Public Sector",
+      region: "Nordics",
+      channel: "direct" as const,
+    },
+    {
+      name: "Danish Maritime Fleet",
+      segment: "Maritime",
+      region: "Nordics",
+      channel: "direct" as const,
+    },
+    {
+      name: "Swiss Private Banking IT",
+      segment: "Financial Services",
+      region: "DACH",
+      channel: "direct" as const,
+    },
+    {
+      name: "Romanian Grid Operator",
+      segment: "Energy",
+      region: "CEE",
+      channel: "direct" as const,
+    },
+    {
+      name: "French Hospital Network",
+      segment: "Healthcare",
+      region: "Southern Europe",
+      channel: "direct" as const,
+    },
+    {
+      name: "German Auto Supplier",
+      segment: "Manufacturing",
+      region: "DACH",
+      channel: "reseller" as const,
+    },
+    { name: "Irish Tech Campus", segment: "Enterprise", region: "UK", channel: "direct" as const },
+  ].map((row, i) => ({
+    id: `22222222-2222-4222-8222-${String(210 + i).padStart(12, "0")}`,
+    ...row,
+    ownerId: [IDS.rep1, IDS.rep2, IDS.rep3, IDS.rep4][i % 4],
+  }));
+
+  accountRows.push(...extraAccountRows);
   await db.insert(accounts).values(accountRows);
 
   await db.insert(contacts).values([
@@ -319,7 +476,7 @@ async function seed() {
       title: "Nordic Logistics fleet refresh",
       channel: "direct" as const,
       stage: "customer_test" as const,
-      quarterlyForecast: forecast(120000, 36000),
+      quarterlyForecast: realisticForecast(1, 480000, 144000, "customer_test"),
       lastActivityAt: daysAgo(3),
       expectedCloseDate: daysAhead(45),
     },
@@ -330,7 +487,7 @@ async function seed() {
       title: "Baltic Telecom reseller rollout",
       channel: "reseller" as const,
       stage: "rfp_offer_given" as const,
-      quarterlyForecast: forecast(80000, 20000),
+      quarterlyForecast: realisticForecast(2, 320000, 80000, "rfp_offer_given"),
       lastActivityAt: daysAgo(20),
       expectedCloseDate: daysAhead(30),
     },
@@ -341,7 +498,7 @@ async function seed() {
       title: "Helvetic Health pilot",
       channel: "direct" as const,
       stage: "contract_negotiation" as const,
-      quarterlyForecast: forecast(200000, 80000),
+      quarterlyForecast: realisticForecast(3, 800000, 320000, "contract_negotiation"),
       lastActivityAt: daysAgo(2),
       expectedCloseDate: daysAhead(14),
     },
@@ -352,7 +509,7 @@ async function seed() {
       title: "Polska Energy field devices",
       channel: "direct" as const,
       stage: "interest_shown" as const,
-      quarterlyForecast: forecast(50000, 15000),
+      quarterlyForecast: realisticForecast(4, 200000, 60000, "interest_shown"),
       lastActivityAt: daysAgo(5),
     },
     {
@@ -362,7 +519,7 @@ async function seed() {
       title: "UK Defence channel bundle",
       channel: "reseller" as const,
       stage: "won" as const,
-      quarterlyForecast: forecast(150000, 45000),
+      quarterlyForecast: realisticForecast(5, 600000, 180000, "won"),
       lastActivityAt: daysAgo(1),
     },
     {
@@ -372,7 +529,7 @@ async function seed() {
       title: "Iberia Retail POS security",
       channel: "direct" as const,
       stage: "rfi_answered" as const,
-      quarterlyForecast: forecast(90000, 30000),
+      quarterlyForecast: realisticForecast(6, 360000, 120000, "rfi_answered"),
       lastActivityAt: daysAgo(18),
     },
     {
@@ -382,7 +539,7 @@ async function seed() {
       title: "Benelux Finance compliance pack",
       channel: "direct" as const,
       stage: "customer_test" as const,
-      quarterlyForecast: forecast(110000, 55000),
+      quarterlyForecast: realisticForecast(7, 440000, 220000, "customer_test"),
       lastActivityAt: daysAgo(4),
     },
     {
@@ -392,7 +549,7 @@ async function seed() {
       title: "Nordic Reseller Q3 push",
       channel: "reseller" as const,
       stage: "lost" as const,
-      quarterlyForecast: forecast(30000, 10000),
+      quarterlyForecast: realisticForecast(8, 120000, 40000, "lost"),
       lastActivityAt: daysAgo(30),
     },
     {
@@ -402,7 +559,7 @@ async function seed() {
       title: "ScanMed ward devices",
       channel: "direct" as const,
       stage: "rfp_offer_given" as const,
-      quarterlyForecast: forecast(175000, 42000),
+      quarterlyForecast: realisticForecast(9, 700000, 168000, "rfp_offer_given"),
       lastActivityAt: daysAgo(7),
     },
     {
@@ -412,7 +569,7 @@ async function seed() {
       title: "Nordic Logistics SOC add-on",
       channel: "direct" as const,
       stage: "interest_shown" as const,
-      quarterlyForecast: forecast(0, 72000),
+      quarterlyForecast: realisticForecast(10, 0, 288000, "interest_shown"),
       lastActivityAt: daysAgo(16),
     },
     {
@@ -422,7 +579,7 @@ async function seed() {
       title: "Polska patch subscription",
       channel: "direct" as const,
       stage: "rfp_offer_given" as const,
-      quarterlyForecast: forecast(20000, 48000),
+      quarterlyForecast: realisticForecast(11, 80000, 192000, "rfp_offer_given"),
       lastActivityAt: daysAgo(6),
     },
     {
@@ -432,7 +589,7 @@ async function seed() {
       title: "Iberia deployment services",
       channel: "direct" as const,
       stage: "customer_test" as const,
-      quarterlyForecast: forecast(60000, 90000),
+      quarterlyForecast: realisticForecast(12, 240000, 360000, "customer_test"),
       lastActivityAt: daysAgo(21),
     },
     {
@@ -442,7 +599,7 @@ async function seed() {
       title: "Benelux premium support",
       channel: "direct" as const,
       stage: "contract_negotiation" as const,
-      quarterlyForecast: forecast(40000, 120000),
+      quarterlyForecast: realisticForecast(13, 160000, 480000, "contract_negotiation"),
       lastActivityAt: daysAgo(1),
     },
     {
@@ -452,7 +609,7 @@ async function seed() {
       title: "Baltic upgrade path",
       channel: "reseller" as const,
       stage: "interest_shown" as const,
-      quarterlyForecast: forecast(45000, 12000),
+      quarterlyForecast: realisticForecast(14, 180000, 48000, "interest_shown"),
       lastActivityAt: daysAgo(25),
     },
     {
@@ -462,7 +619,7 @@ async function seed() {
       title: "UK Defence phase 2",
       channel: "reseller" as const,
       stage: "rfi_answered" as const,
-      quarterlyForecast: forecast(95000, 28000),
+      quarterlyForecast: realisticForecast(15, 380000, 112000, "rfi_answered"),
       lastActivityAt: daysAgo(8),
     },
     {
@@ -472,7 +629,7 @@ async function seed() {
       title: "Helvetic audit services",
       channel: "direct" as const,
       stage: "won" as const,
-      quarterlyForecast: forecast(10000, 65000),
+      quarterlyForecast: realisticForecast(16, 40000, 260000, "won"),
       lastActivityAt: daysAgo(2),
     },
     {
@@ -482,7 +639,7 @@ async function seed() {
       title: "Reseller starter kit",
       channel: "reseller" as const,
       stage: "customer_test" as const,
-      quarterlyForecast: forecast(35000, 8000),
+      quarterlyForecast: realisticForecast(17, 140000, 32000, "customer_test"),
       lastActivityAt: daysAgo(10),
     },
     {
@@ -492,11 +649,55 @@ async function seed() {
       title: "ScanMed support renewal",
       channel: "direct" as const,
       stage: "contract_negotiation" as const,
-      quarterlyForecast: forecast(15000, 96000),
+      quarterlyForecast: realisticForecast(18, 60000, 384000, "contract_negotiation"),
       lastActivityAt: daysAgo(3),
     },
   ];
-  await db.insert(deals).values(dealRows);
+
+  const stagePool = [
+    "interest_shown",
+    "rfi_answered",
+    "rfp_offer_given",
+    "customer_test",
+    "contract_negotiation",
+  ] as const;
+  const dealTitlePrefixes = [
+    "Fleet rollout",
+    "MDM expansion",
+    "SOC bundle",
+    "Device refresh",
+    "Support renewal",
+    "Pilot deployment",
+    "Channel bundle",
+    "Compliance pack",
+    "Field ops kit",
+    "Premium tier upgrade",
+  ];
+
+  const allAccountIds = accountRows.map((a) => a.id);
+  const repIds = [IDS.rep1, IDS.rep2, IDS.rep3, IDS.rep4];
+  const generatedDeals = [];
+
+  for (let i = 19; i <= 85; i++) {
+    const accountId = allAccountIds[i % allAccountIds.length];
+    const account = accountRows.find((a) => a.id === accountId)!;
+    const stage = stagePool[i % stagePool.length];
+    const deviceBase = 80000 + (i % 13) * 38000 + (i % 4) * 22000;
+    const serviceBase = 25000 + (i % 11) * 18000 + (i % 5) * 12000;
+    generatedDeals.push({
+      id: `55555555-5555-4555-8555-${String(i).padStart(12, "0")}`,
+      accountId,
+      ownerId: repIds[i % repIds.length],
+      title: `${dealTitlePrefixes[i % dealTitlePrefixes.length]} — ${account.name.split(" ")[0]} ${2025 + (i % 3)}`,
+      channel: account.channel,
+      stage,
+      quarterlyForecast: realisticForecast(i, deviceBase * 4, serviceBase * 4, stage),
+      lastActivityAt: daysAgo(1 + (i % 28)),
+      expectedCloseDate: i % 5 === 0 ? undefined : daysAhead(10 + (i % 90)),
+    });
+  }
+
+  await db.insert(deals).values([...dealRows, ...generatedDeals]);
 
   console.log("Seeding cases…");
   await db.insert(cases).values([
@@ -509,6 +710,7 @@ async function seed() {
       status: "in_progress",
       priority: "high",
       slaDueAt: daysAhead(2),
+      createdAt: daysAgo(45),
     },
     {
       id: IDS.case2,
@@ -519,6 +721,7 @@ async function seed() {
       status: "open",
       priority: "medium",
       slaDueAt: daysAhead(5),
+      createdAt: daysAgo(120),
     },
     {
       id: IDS.case3,
@@ -530,6 +733,7 @@ async function seed() {
       priority: "critical",
       slaDueAt: daysAhead(1),
       escalatedToThirdParty: true,
+      createdAt: daysAgo(8),
     },
     {
       id: IDS.case4,
@@ -540,6 +744,7 @@ async function seed() {
       status: "resolved",
       priority: "low",
       slaDueAt: daysAgo(2),
+      createdAt: daysAgo(200),
     },
     {
       id: IDS.case5,
@@ -550,6 +755,7 @@ async function seed() {
       status: "open",
       priority: "high",
       slaDueAt: daysAhead(3),
+      createdAt: daysAgo(60),
     },
     {
       id: IDS.case6,
@@ -560,6 +766,7 @@ async function seed() {
       status: "in_progress",
       priority: "high",
       slaDueAt: daysAhead(4),
+      createdAt: daysAgo(30),
     },
     {
       id: IDS.case7,
@@ -570,6 +777,7 @@ async function seed() {
       status: "open",
       priority: "medium",
       slaDueAt: daysAhead(6),
+      createdAt: daysAgo(150),
     },
     {
       id: IDS.case8,
@@ -580,6 +788,7 @@ async function seed() {
       status: "closed",
       priority: "critical",
       slaDueAt: daysAgo(10),
+      createdAt: daysAgo(280),
     },
     {
       id: IDS.case9,
@@ -590,6 +799,7 @@ async function seed() {
       status: "in_progress",
       priority: "medium",
       slaDueAt: daysAhead(7),
+      createdAt: daysAgo(14),
     },
     {
       id: IDS.case10,
@@ -600,6 +810,7 @@ async function seed() {
       status: "resolved",
       priority: "low",
       slaDueAt: daysAgo(1),
+      createdAt: daysAgo(95),
     },
     {
       id: IDS.case11,
@@ -610,6 +821,7 @@ async function seed() {
       status: "open",
       priority: "medium",
       slaDueAt: daysAhead(8),
+      createdAt: daysAgo(3),
     },
     {
       id: IDS.case12,
@@ -621,6 +833,7 @@ async function seed() {
       priority: "high",
       slaDueAt: daysAhead(2),
       escalatedToThirdParty: false,
+      createdAt: daysAgo(22),
     },
   ]);
 
@@ -652,6 +865,7 @@ async function seed() {
       discountPercent: "8.00",
       discountJustification: "Strategic Nordics reference customer",
       total: "321540.00",
+      status: "submitted" as const,
       isLocked: true,
       version: 1,
     },
@@ -673,6 +887,7 @@ async function seed() {
       discountPercent: "5.00",
       discountJustification: "Multi-year commitment",
       total: "227715.00",
+      status: "submitted" as const,
       isLocked: true,
       version: 1,
     },
@@ -699,6 +914,7 @@ async function seed() {
       ],
       subtotal: "171800.00",
       total: "171800.00",
+      status: "draft" as const,
       isLocked: false,
       version: 1,
     },
@@ -720,6 +936,7 @@ async function seed() {
       discountPercent: "12.00",
       discountJustification: "Reseller volume tier",
       total: "10560.00",
+      status: "submitted" as const,
       isLocked: true,
       version: 1,
     },
@@ -741,6 +958,7 @@ async function seed() {
       discountPercent: "10.00",
       discountJustification: "Finance sector bundle",
       total: "136080.00",
+      status: "submitted" as const,
       isLocked: true,
       version: 1,
     },
@@ -760,8 +978,20 @@ async function seed() {
       ],
       subtotal: "18000.00",
       total: "18000.00",
+      status: "draft" as const,
       isLocked: false,
       version: 1,
+    },
+    {
+      accountId: IDS.acc1,
+      dealId: IDS.deal1,
+      createdById: IDS.rep1,
+      lineItems: lineItems1,
+      subtotal: "280000.00",
+      total: "280000.00",
+      status: "draft" as const,
+      isLocked: false,
+      version: 2,
     },
   ]);
 
@@ -896,7 +1126,12 @@ async function seed() {
       body: "Deployment services SOW sent to procurement.",
     },
   ];
-  await db.insert(notes).values(timeline);
+  await db.insert(notes).values(
+    timeline.map((note, i) => ({
+      ...note,
+      createdAt: daysAgo(365 - i * 28),
+    })),
+  );
 
   const activities = [
     {
@@ -974,7 +1209,59 @@ async function seed() {
   console.log("Seed complete.");
 }
 
-seed().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+async function seedNews() {
+  console.log("Seeding CRM news…");
+  const monthsAgo = (m: number) => new Date(Date.now() - m * 30 * 24 * 60 * 60 * 1000);
+  await db.insert(newsPosts).values([
+    {
+      authorId: IDS.manager,
+      title: "Q1 pipeline review",
+      body: "Team hit 94% of Q1 target. DACH enterprise segment leading — keep momentum on healthcare vertical.",
+      createdAt: monthsAgo(11),
+    },
+    {
+      authorId: IDS.rep1,
+      body: "Closed pilot with Nordic Logistics — 500 devices moving to RFP stage. Great cross-team work with TAM!",
+      createdAt: monthsAgo(8),
+    },
+    {
+      authorId: IDS.finance,
+      title: "New discount tiers",
+      body: "Updated reseller volume tiers in catalog. Offers above 10% discount still need SM + Finance sign-off.",
+      createdAt: monthsAgo(6),
+    },
+    {
+      authorId: IDS.rep2,
+      body: "Baltic Telecom reseller deal stalled — anyone with similar channel experience, ping me.",
+      createdAt: monthsAgo(3),
+    },
+    {
+      authorId: IDS.tam1,
+      body: "ScanMed hospital rollout: firmware rollback successful. Case resolved — lessons learned doc coming Monday.",
+      createdAt: monthsAgo(1),
+    },
+    {
+      authorId: IDS.rep3,
+      title: "New enterprise win",
+      body: "Helvetic Health signed 3-year SOC monitoring contract. Finance approval pending on final offer v1.",
+      createdAt: daysAgo(5),
+    },
+    {
+      authorId: IDS.manager,
+      body: "Reminder: all submitted offers now route through SM → Finance. Draft offers stay editable on the deal.",
+      createdAt: daysAgo(2),
+    },
+    {
+      authorId: IDS.rep4,
+      body: "Oslo Energy deployment SOW approved — kicking off MDM onboarding next week.",
+      createdAt: daysAgo(1),
+    },
+  ]);
+}
+
+seed()
+  .then(seedNews)
+  .catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });

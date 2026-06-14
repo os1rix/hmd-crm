@@ -1,17 +1,21 @@
 import { RoleSelector } from "@/components/auth/role-selector";
+import { ApprovalHistory } from "@/components/dashboard/approval-history";
 import { ApprovalQueue } from "@/components/dashboard/approval-queue";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { TamCaseList } from "@/components/dashboard/tam-case-list";
 import { Card } from "@/components/ui/card";
+import { CardMoney } from "@/components/ui/card-money";
+import { InfoTip } from "@/components/ui/info-tip";
 import { KpiCard } from "@/components/ui/kpi-card";
 import { SectionHeader } from "@/components/ui/section-header";
 import { StatusChip } from "@/components/ui/status-chip";
 import { db } from "@/db";
 import { accounts, activityLog, cases, deals, offerApprovals } from "@/db/schema";
-import { STAGE_LABELS, dealTotalValue, isDealAtRisk, weightedValue } from "@/lib/deals";
+import { STAGE_LABELS, dealTotalValue, isDealAtRisk } from "@/lib/deals";
 import { daysSinceUpdate, formatEuro, formatRelative } from "@/lib/format";
+import { MONEY } from "@/lib/money-labels";
 import { getSessionUser } from "@/lib/session";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { AlertTriangle, Briefcase, Clock, TrendingUp } from "lucide-react";
 import Link from "next/link";
 
@@ -48,15 +52,50 @@ export default async function HomePage() {
       : [];
 
   const pendingApprovals =
-    user.role === "sales_manager" || user.role === "finance"
+    user.role === "sales_manager"
       ? await db.query.offerApprovals.findMany({
           where: and(
             eq(offerApprovals.status, "pending"),
-            eq(offerApprovals.approverRole, user.role),
+            eq(offerApprovals.approverRole, "sales_manager"),
           ),
           with: {
             offer: {
               with: { account: true, deal: true, createdBy: true },
+            },
+          },
+        })
+      : user.role === "finance"
+        ? await db.query.offerApprovals.findMany({
+            where: and(
+              eq(offerApprovals.status, "pending"),
+              eq(offerApprovals.approverRole, "finance"),
+            ),
+            with: {
+              offer: {
+                with: { account: true, deal: true, createdBy: true },
+              },
+            },
+          })
+        : [];
+
+  const approvalHistory =
+    user.role === "sales_manager" || user.role === "finance"
+      ? await db.query.offerApprovals.findMany({
+          where: and(
+            eq(offerApprovals.approverRole, user.role),
+            inArray(offerApprovals.status, ["approved", "rejected"]),
+          ),
+          orderBy: [desc(offerApprovals.decidedAt)],
+          limit: 20,
+          with: {
+            approver: true,
+            offer: {
+              with: {
+                account: true,
+                deal: true,
+                createdBy: true,
+                approvals: true,
+              },
             },
           },
         })
@@ -105,23 +144,24 @@ export default async function HomePage() {
   });
 
   const teamPipeline = openDeals.reduce((s, d) => s + dealTotalValue(d.quarterlyForecast), 0);
-  const weightedPipeline = openDeals.reduce(
-    (s, d) => s + weightedValue(d.quarterlyForecast, d.stage),
-    0,
-  );
 
   const headerStat = (() => {
     switch (user.role) {
       case "sales_rep":
-        return { label: "Total pipeline", value: formatEuro(repPipeline) };
+        return {
+          label: MONEY.totalPipeline.label,
+          value: formatEuro(repPipeline),
+          hint: MONEY.totalPipeline.hint,
+        };
       case "tam":
         return { label: "Open cases", value: String(tamOpen.length) };
       case "sales_manager":
         return { label: "Stalled deals", value: String(atRiskDeals.length) };
       case "finance":
         return {
-          label: "Weighted pipeline",
-          value: formatEuro(weightedPipeline),
+          label: MONEY.teamPipeline.label,
+          value: formatEuro(teamPipeline),
+          hint: MONEY.teamPipeline.hint,
         };
       default:
         return { label: "", value: "" };
@@ -142,8 +182,9 @@ export default async function HomePage() {
               trend="neutral"
             />
             <KpiCard
-              label="Total pipeline"
+              label={MONEY.totalPipeline.label}
               value={formatEuro(repPipeline)}
+              hint={MONEY.totalPipeline.hint}
               icon={TrendingUp}
               trend="up"
             />
@@ -173,17 +214,24 @@ export default async function HomePage() {
                       "Account",
                       "Open deals",
                       "Top stage",
-                      "Pipeline",
+                      { h: "Pipeline", hint: MONEY.accountForecast.hint },
                       "Days since update",
                       "Status",
-                    ].map((h) => (
-                      <th
-                        key={h}
-                        className="p-3 text-[13px] font-medium uppercase tracking-widest text-section"
-                      >
-                        {h}
-                      </th>
-                    ))}
+                    ].map((col) => {
+                      const h = typeof col === "string" ? col : col.h;
+                      const hint = typeof col === "string" ? undefined : col.hint;
+                      return (
+                        <th
+                          key={h}
+                          className="p-3 text-[13px] font-medium uppercase tracking-widest text-section"
+                        >
+                          <span className="inline-flex items-center gap-1">
+                            {h}
+                            {hint && <InfoTip text={hint} />}
+                          </span>
+                        </th>
+                      );
+                    })}
                   </tr>
                 </thead>
                 <tbody>
@@ -227,7 +275,14 @@ export default async function HomePage() {
                             "—"
                           )}
                         </td>
-                        <td className="p-3 font-mono tabular-nums">{formatEuro(pipeline)}</td>
+                        <td className="p-3">
+                          <CardMoney
+                            amount={pipeline}
+                            label={MONEY.accountForecast.label}
+                            hint={MONEY.accountForecast.hint}
+                            size="sm"
+                          />
+                        </td>
                         <td className="p-3 text-xs text-muted tabular-nums">{days}d</td>
                         <td className="p-3">
                           <StatusChip variant={risky ? "at-risk" : "on-track"}>
@@ -287,16 +342,12 @@ export default async function HomePage() {
         <>
           <div className="mb-6 grid gap-4 md:grid-cols-4">
             <KpiCard
-              label="Total team pipeline"
+              label={MONEY.teamPipeline.label}
               value={formatEuro(teamPipeline)}
+              hint={MONEY.teamPipeline.hint}
               icon={TrendingUp}
             />
-            <KpiCard
-              label="Weighted pipeline"
-              value={formatEuro(weightedPipeline)}
-              icon={TrendingUp}
-              trend="up"
-            />
+            <KpiCard label="Open deals" value={openDeals.length} icon={Briefcase} trend="neutral" />
             <KpiCard
               label="Stalled deals"
               value={atRiskDeals.length}
@@ -317,11 +368,14 @@ export default async function HomePage() {
                       <span className="text-sm text-muted">{deal.account.name}</span>
                     </div>
                     <p className="font-medium">{deal.title}</p>
-                    <div className="mt-2 flex gap-4 text-xs text-muted">
-                      <span className="font-mono tabular-nums">
-                        {formatEuro(dealTotalValue(deal.quarterlyForecast))}
-                      </span>
-                      <span>Rep: {deal.owner.name}</span>
+                    <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
+                      <CardMoney
+                        amount={dealTotalValue(deal.quarterlyForecast)}
+                        label={MONEY.dealForecast.label}
+                        hint={MONEY.dealForecast.hint}
+                        size="sm"
+                      />
+                      <span className="text-xs text-muted">Rep: {deal.owner.name}</span>
                     </div>
                   </Card>
                 </Link>
@@ -329,9 +383,20 @@ export default async function HomePage() {
             </div>
           </section>
 
-          <section>
+          <section className="mb-8">
             <SectionHeader>Approval queue</SectionHeader>
-            <ApprovalQueue approvals={pendingApprovals} />
+            <p className="mb-3 text-sm text-muted">
+              Offers waiting for your manager sign-off. After you approve, they move to finance.
+            </p>
+            <ApprovalQueue approvals={pendingApprovals} userRole={user.role} />
+          </section>
+
+          <section>
+            <SectionHeader>Approval history</SectionHeader>
+            <p className="mb-3 text-sm text-muted">
+              Offers you have approved or rejected, including those forwarded to finance.
+            </p>
+            <ApprovalHistory rows={approvalHistory} />
           </section>
         </>
       )}
@@ -340,16 +405,12 @@ export default async function HomePage() {
         <>
           <div className="mb-6 grid gap-4 md:grid-cols-4">
             <KpiCard
-              label="Total team pipeline"
+              label={MONEY.teamPipeline.label}
               value={formatEuro(teamPipeline)}
+              hint={MONEY.teamPipeline.hint}
               icon={TrendingUp}
             />
-            <KpiCard
-              label="Weighted pipeline"
-              value={formatEuro(weightedPipeline)}
-              icon={TrendingUp}
-              trend="up"
-            />
+            <KpiCard label="Open deals" value={openDeals.length} icon={Briefcase} trend="neutral" />
             <KpiCard label="Stalled deals" value={atRiskDeals.length} icon={AlertTriangle} />
             <KpiCard label="Pending approvals" value={pendingApprovals.length} icon={Clock} />
           </div>
@@ -370,18 +431,35 @@ export default async function HomePage() {
                   <Card hover className="border-l-4 border-l-warning p-4">
                     <p className="font-medium">{deal.title}</p>
                     <p className="text-sm text-muted">{deal.account.name}</p>
-                    <p className="mt-1 font-mono text-xs tabular-nums text-muted">
-                      {formatEuro(dealTotalValue(deal.quarterlyForecast))}
-                    </p>
+                    <div className="mt-2">
+                      <CardMoney
+                        amount={dealTotalValue(deal.quarterlyForecast)}
+                        label={MONEY.dealForecast.label}
+                        hint={MONEY.dealForecast.hint}
+                        size="sm"
+                      />
+                    </div>
                   </Card>
                 </Link>
               ))}
             </div>
           </section>
 
-          <section>
+          <section className="mb-8">
             <SectionHeader>Pending finance approvals</SectionHeader>
-            <ApprovalQueue approvals={pendingApprovals} />
+            <p className="mb-3 text-sm text-muted">
+              Offers that passed manager review and need your financial sign-off.
+            </p>
+            <ApprovalQueue approvals={pendingApprovals} userRole={user.role} />
+          </section>
+
+          <section>
+            <SectionHeader>Approval history</SectionHeader>
+            <p className="mb-3 text-sm text-muted">
+              Offers you have approved or rejected. Fully approved offers are ready for the sales
+              team.
+            </p>
+            <ApprovalHistory rows={approvalHistory} />
           </section>
         </>
       )}

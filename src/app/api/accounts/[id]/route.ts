@@ -11,8 +11,12 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       with: {
         owner: true,
         contacts: true,
-        deals: { with: { owner: true } },
+        deals: { with: { owner: true, offers: { with: { approvals: true, createdBy: true } } } },
         cases: { with: { assignee: true, service: true } },
+        offers: {
+          with: { deal: true, createdBy: true, approvals: true },
+          orderBy: (offers, { desc }) => [desc(offers.createdAt)],
+        },
         notes: { with: { author: true }, orderBy: (notes, { desc }) => [desc(notes.createdAt)] },
       },
     });

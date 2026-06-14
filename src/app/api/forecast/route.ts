@@ -1,9 +1,8 @@
 import { db } from "@/db";
-import { deals } from "@/db/schema";
 import type { QuarterlyForecastEntry } from "@/db/schema";
 import { apiError, apiSuccess } from "@/lib/api";
-import { STAGE_PROBABILITY, dealTotalValue } from "@/lib/deals";
-import { sortQuarters } from "@/lib/quarters";
+import { dealTotalValue } from "@/lib/deals";
+import { aggregateChartRows } from "@/lib/forecast-periods";
 
 export async function GET() {
   try {
@@ -11,39 +10,21 @@ export async function GET() {
       with: { account: true, owner: true },
     });
 
-    const quarters = new Map<
-      string,
-      { device: number; service: number; weightedDevice: number; weightedService: number }
-    >();
-
+    const allEntries: QuarterlyForecastEntry[] = [];
     for (const deal of rows) {
       if (deal.stage === "lost") continue;
-      const prob = STAGE_PROBABILITY[deal.stage];
-      const forecast = (deal.quarterlyForecast ?? []) as QuarterlyForecastEntry[];
-      for (const q of forecast) {
-        const existing = quarters.get(q.quarter) ?? {
-          device: 0,
-          service: 0,
-          weightedDevice: 0,
-          weightedService: 0,
-        };
-        existing.device += q.deviceRevenue;
-        existing.service += q.serviceRevenue;
-        existing.weightedDevice += q.deviceRevenue * prob;
-        existing.weightedService += q.serviceRevenue * prob;
-        quarters.set(q.quarter, existing);
-      }
+      allEntries.push(...((deal.quarterlyForecast ?? []) as QuarterlyForecastEntry[]));
     }
 
-    const chart = sortQuarters(
-      [...quarters.entries()].map(([quarter, values]) => ({ quarter, ...values })),
-    );
+    const monthlyChart = aggregateChartRows(allEntries, "month");
+    const quarterlyChart = aggregateChartRows(allEntries, "quarter");
 
-    const totalPipeline = rows.reduce((sum, d) => sum + dealTotalValue(d.quarterlyForecast), 0);
-    const weightedPipeline = rows.reduce(
-      (sum, d) => sum + dealTotalValue(d.quarterlyForecast) * STAGE_PROBABILITY[d.stage],
-      0,
-    );
+    const totalPipeline = rows
+      .filter((d) => d.stage !== "lost")
+      .reduce((sum, d) => sum + dealTotalValue(d.quarterlyForecast), 0);
+
+    const openDeals = rows.filter((d) => d.stage !== "won" && d.stage !== "lost").length;
+
     const stalled = rows.filter((d) => {
       const days = Math.floor(
         (Date.now() - new Date(d.lastActivityAt).getTime()) / (1000 * 60 * 60 * 24),
@@ -51,7 +32,14 @@ export async function GET() {
       return days >= 14 && d.stage !== "won" && d.stage !== "lost";
     });
 
-    return apiSuccess({ chart, totalPipeline, weightedPipeline, stalled, deals: rows });
+    return apiSuccess({
+      monthlyChart,
+      quarterlyChart,
+      totalPipeline,
+      openDeals,
+      stalled,
+      deals: rows,
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to fetch forecast";
     return apiError(message);

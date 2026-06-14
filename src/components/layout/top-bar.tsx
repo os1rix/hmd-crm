@@ -3,9 +3,8 @@
 import { SearchBar } from "@/components/layout/search-bar";
 import { fetchList } from "@/lib/fetch-client";
 import type { SessionUser } from "@/lib/session";
-import { Bell } from "lucide-react";
+import { Bell, Newspaper } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 type Notification = {
@@ -17,48 +16,61 @@ type Notification = {
   createdAt: string;
 };
 
-export function TopBar({ user }: { user: SessionUser | null }) {
-  const router = useRouter();
+export function TopBar({
+  user,
+  onToggleNews,
+  newsOpen,
+}: {
+  user: SessionUser | null;
+  onToggleNews?: () => void;
+  newsOpen?: boolean;
+}) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [open, setOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
 
   useEffect(() => {
     if (!user) return;
     fetchList<Notification>("/api/notifications").then(setNotifications);
   }, [user]);
 
-  async function logout() {
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/");
-    router.refresh();
-  }
-
   if (!user) {
     return <div className="h-full w-full" />;
   }
 
   const unread = notifications.filter((n) => !n.isRead).length;
+  const topBtn =
+    "flex h-9 items-center border border-border bg-surface text-muted hover:text-foreground";
 
   return (
     <div className="flex h-full w-full items-center gap-4">
       <SearchBar />
-      <div className="ml-auto flex shrink-0 items-center gap-4">
+      <div className="ml-auto flex shrink-0 items-center gap-3">
+        <button
+          type="button"
+          onClick={onToggleNews}
+          className={`${topBtn} gap-1.5 px-3 text-xs font-medium ${
+            newsOpen ? "border-accent/50 bg-accent/10 text-accent" : ""
+          }`}
+        >
+          <Newspaper className="h-4 w-4" />
+          Hot news
+        </button>
         <div className="relative">
           <button
             type="button"
-            onClick={() => setOpen((v) => !v)}
-            className="relative rounded-lg border border-border p-2 text-muted hover:border-accent hover:text-foreground"
+            onClick={() => setNotifOpen((v) => !v)}
+            className={`${topBtn} relative justify-center px-2`}
             aria-label="Notifications"
           >
             <Bell className="h-4 w-4" />
             {unread > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-danger text-[10px] font-bold text-white">
+              <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center bg-danger text-[10px] font-bold text-white">
                 {unread}
               </span>
             )}
           </button>
-          {open && (
-            <div className="absolute right-0 z-50 mt-2 w-80 rounded-lg border border-card-border bg-background shadow-xl">
+          {notifOpen && (
+            <div className="absolute right-0 z-50 mt-2 w-80 border border-card-border bg-background shadow-xl">
               <div className="border-b border-border px-4 py-2 text-[13px] font-medium uppercase tracking-widest text-section">
                 Notifications
               </div>
@@ -70,8 +82,8 @@ export function TopBar({ user }: { user: SessionUser | null }) {
                     <Link
                       key={n.id}
                       href={n.link ?? "#"}
-                      onClick={() => setOpen(false)}
-                      className={`block border-b border-border px-4 py-3 text-sm hover:bg-background ${n.isRead ? "opacity-60" : ""}`}
+                      onClick={() => setNotifOpen(false)}
+                      className={`block border-b border-border px-4 py-3 text-sm hover:bg-surface ${n.isRead ? "opacity-60" : ""}`}
                     >
                       <p className="font-medium">{n.title}</p>
                       <p className="text-xs text-muted">{n.body}</p>
@@ -82,9 +94,6 @@ export function TopBar({ user }: { user: SessionUser | null }) {
             </div>
           )}
         </div>
-        <button type="button" onClick={logout} className="text-xs text-muted hover:text-foreground">
-          Logout
-        </button>
       </div>
     </div>
   );

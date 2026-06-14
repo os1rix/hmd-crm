@@ -1,17 +1,22 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
+import { CardMoney } from "@/components/ui/card-money";
+import { EntityFilters, type FilterValues } from "@/components/ui/entity-filters";
+import { AccountsGridSkeleton, EntityFiltersSkeleton } from "@/components/ui/skeleton";
 import { STAGE_LABELS, dealTotalValue, isDealAtRisk } from "@/lib/deals";
-import { fetchList } from "@/lib/fetch-client";
-import { formatEuro } from "@/lib/format";
+import { MONEY } from "@/lib/money-labels";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type DealSummary = {
   id: string;
   title: string;
   stage: string;
+  channel: string;
   lastActivityAt: string;
+  createdAt: string;
+  ownerId: string;
   quarterlyForecast: Array<{ quarter: string; deviceRevenue: number; serviceRevenue: number }>;
 };
 
@@ -21,7 +26,7 @@ type Account = {
   segment: string | null;
   region: string | null;
   channel: string;
-  owner: { name: string } | null;
+  owner: { id: string; name: string } | null;
   contacts: { name: string }[];
   deals: DealSummary[];
 };
@@ -30,9 +35,16 @@ export default function AccountsPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [filters, setFilters] = useState<FilterValues>({});
 
   useEffect(() => {
-    fetch("/api/accounts")
+    const params = new URLSearchParams();
+    if (filters.channel) params.set("channel", filters.channel);
+    if (filters.owner) params.set("ownerId", filters.owner);
+    if (filters.dateFrom) params.set("dateFrom", filters.dateFrom);
+    const qs = params.toString();
+
+    fetch(`/api/accounts${qs ? `?${qs}` : ""}`)
       .then(async (response) => {
         if (!response.ok) {
           const body = (await response.json()) as { error?: string };
@@ -43,10 +55,59 @@ export default function AccountsPage() {
       .then((rows) => setAccounts(Array.isArray(rows) ? rows : []))
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [filters]);
+
+  const owners = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const a of accounts) {
+      if (a.owner) map.set(a.owner.id, a.owner.name);
+    }
+    return [...map.entries()].map(([id, name]) => ({ id, name }));
+  }, [accounts]);
+
+  const filterFields = useMemo(
+    () => [
+      {
+        key: "channel",
+        label: "Channel",
+        type: "select" as const,
+        options: [
+          { value: "direct", label: "Direct" },
+          { value: "reseller", label: "Reseller" },
+        ],
+      },
+      {
+        key: "owner",
+        label: "Owner",
+        type: "select" as const,
+        options: owners.map((o) => ({ value: o.id, label: o.name })),
+      },
+      { key: "dateFrom", label: "Created after", type: "date" as const },
+    ],
+    [owners],
+  );
+
+  const filtered = useMemo(() => {
+    let rows = accounts;
+    if (filters.stage) {
+      rows = rows.filter((a) =>
+        a.deals.some((d) => d.stage === filters.stage && d.stage !== "won" && d.stage !== "lost"),
+      );
+    }
+    return rows;
+  }, [accounts, filters.stage]);
 
   if (loading) {
-    return <div className="p-6 text-muted">Loading accounts…</div>;
+    return (
+      <div className="p-6">
+        <h1 className="mb-2 text-2xl font-semibold">Accounts</h1>
+        <p className="mb-4 text-sm text-muted">
+          Your portfolio with live deal status — click an account for details.
+        </p>
+        <EntityFiltersSkeleton />
+        <AccountsGridSkeleton />
+      </div>
+    );
   }
 
   if (error) {
@@ -60,14 +121,30 @@ export default function AccountsPage() {
   return (
     <div className="p-6">
       <h1 className="mb-2 text-2xl font-semibold">Accounts</h1>
-      <p className="mb-6 text-sm text-muted">
+      <p className="mb-4 text-sm text-muted">
         Your portfolio with live deal status — click an account for details.
       </p>
+
+      <EntityFilters
+        fields={[
+          ...filterFields,
+          {
+            key: "stage",
+            label: "Deal stage",
+            type: "select",
+            options: Object.entries(STAGE_LABELS).map(([value, label]) => ({ value, label })),
+          },
+        ]}
+        values={filters}
+        onChange={(key, value) => setFilters((prev) => ({ ...prev, [key]: value }))}
+        onClear={() => setFilters({})}
+      />
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {accounts.length === 0 ? (
-          <p className="text-muted">No accounts in your portfolio yet.</p>
+        {filtered.length === 0 ? (
+          <p className="text-muted">No accounts match your filters.</p>
         ) : (
-          accounts.map((account) => {
+          filtered.map((account) => {
             const openDeals = account.deals.filter((d) => d.stage !== "won" && d.stage !== "lost");
             const pipeline = openDeals.reduce(
               (sum, d) => sum + dealTotalValue(d.quarterlyForecast),
@@ -79,7 +156,7 @@ export default function AccountsPage() {
               <Link
                 key={account.id}
                 href={`/accounts/${account.id}`}
-                className="rounded-xl border border-border p-5 transition hover:border-accent"
+                className="border border-border p-5 transition hover:border-accent"
               >
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <h2 className="font-semibold">{account.name}</h2>
@@ -92,10 +169,15 @@ export default function AccountsPage() {
                 </p>
                 <p className="mt-2 text-xs text-muted">
                   {account.contacts.length} contacts · {openDeals.length} open deals
+                  {account.owner && ` · ${account.owner.name}`}
                 </p>
-                <p className="mt-3 font-mono text-sm tabular-nums text-accent">
-                  {formatEuro(pipeline)} pipeline
-                </p>
+                <div className="mt-3">
+                  <CardMoney
+                    amount={pipeline}
+                    label={MONEY.accountForecast.label}
+                    hint={MONEY.accountForecast.hint}
+                  />
+                </div>
                 {atRisk && (
                   <div className="mt-2">
                     <Badge variant="warning">Deal at risk</Badge>

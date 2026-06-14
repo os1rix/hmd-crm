@@ -1,24 +1,36 @@
 import { db } from "@/db";
 import { cases, notes } from "@/db/schema";
 import { apiError, apiSuccess, parseJsonBody, validationErrorResponse } from "@/lib/api";
+import { parseFilterDateEnd, parseFilterDateStart } from "@/lib/date-filters";
 import { getSessionUser } from "@/lib/session";
 import { createCaseSchema, createNoteSchema, updateCaseSchema } from "@/lib/validators";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, gte, lte } from "drizzle-orm";
 
 export async function GET(request: Request) {
   const user = await getSessionUser();
   const url = new URL(request.url);
-  const mine = url.searchParams.get("mine") === "true";
+  const status = url.searchParams.get("status");
+  const priority = url.searchParams.get("priority");
+  const dateFrom = url.searchParams.get("dateFrom");
+  const dateTo = url.searchParams.get("dateTo");
 
   try {
     const rows = await db.query.cases.findMany({
-      where: mine && user ? eq(cases.assigneeId, user.id) : undefined,
+      where: and(
+        user?.role === "tam" ? eq(cases.assigneeId, user.id) : undefined,
+        status ? eq(cases.status, status as (typeof cases.status.enumValues)[number]) : undefined,
+        priority
+          ? eq(cases.priority, priority as (typeof cases.priority.enumValues)[number])
+          : undefined,
+        dateFrom ? gte(cases.slaDueAt, parseFilterDateStart(dateFrom)) : undefined,
+        dateTo ? lte(cases.slaDueAt, parseFilterDateEnd(dateTo)) : undefined,
+      ),
       orderBy: [desc(cases.updatedAt)],
       with: {
         account: true,
         assignee: true,
         service: true,
-        notes: { with: { author: true } },
+        notes: { with: { author: true }, orderBy: (n, { asc }) => [asc(n.createdAt)] },
       },
     });
     return Response.json(rows);

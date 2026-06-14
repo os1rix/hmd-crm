@@ -29,6 +29,18 @@
       }
     }
   },
+  "overrides": [
+    {
+      "include": ["src/components/ui/skeleton.tsx"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noArrayIndexKey": "off"
+          }
+        }
+      }
+    }
+  ],
   "javascript": {
     "formatter": {
       "quoteStyle": "double",

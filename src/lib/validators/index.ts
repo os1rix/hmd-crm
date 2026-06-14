@@ -92,6 +92,7 @@ export const createOfferSchema = z.object({
   lineItems: z.array(offerLineItemSchema).min(1),
   discountPercent: z.coerce.number().min(0).max(100).optional(),
   discountJustification: z.string().max(2000).optional(),
+  submitAsDraft: z.boolean().optional().default(false),
 });
 
 export const approveOfferSchema = z.object({

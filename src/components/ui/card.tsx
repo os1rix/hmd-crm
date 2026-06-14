@@ -9,7 +9,7 @@ export function Card({
 }) {
   return (
     <div
-      className={`rounded-lg border border-card-border ${
+      className={`border border-card-border ${
         hover ? "transition-all duration-150 hover:-translate-y-px hover:border-card-hover" : ""
       } ${className}`}
     >

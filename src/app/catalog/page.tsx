@@ -1,6 +1,7 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
+import { CatalogSkeleton } from "@/components/ui/skeleton";
 import { fetchJson } from "@/lib/fetch-client";
 import { formatEuro } from "@/lib/format";
 import { useEffect, useState } from "react";
@@ -10,6 +11,7 @@ type Catalog = {
   services: Array<{
     id: string;
     name: string;
+    unitPrice: string;
     serviceType: string;
     invoicingModel: string;
     isActive: boolean;
@@ -37,7 +39,7 @@ export default function CatalogPage() {
     fetchJson<Catalog>("/api/catalog", { products: [], services: [] }).then(setCatalog);
   }, []);
 
-  if (!catalog) return <div className="p-6 text-muted">Loading catalog…</div>;
+  if (!catalog) return <CatalogSkeleton />;
 
   const volumeTier =
     units >= 200 ? DISCOUNT_TIERS[2] : units >= 50 ? DISCOUNT_TIERS[1] : DISCOUNT_TIERS[0];
@@ -122,14 +124,16 @@ export default function CatalogPage() {
           <div className="space-y-3">
             {catalog.services.map((s) => (
               <div key={s.id} className="rounded-xl border border-border p-4">
-                <p className="font-medium">{s.name}</p>
+                <div className="flex items-center justify-between gap-4">
+                  <p className="font-medium">{s.name}</p>
+                  <p className="font-mono text-sm tabular-nums text-[#06b6d4]">
+                    {formatEuro(s.unitPrice)} / unit
+                  </p>
+                </div>
                 <div className="mt-2 flex gap-2">
                   <Badge>{s.serviceType.replaceAll("_", " ")}</Badge>
                   <Badge variant="accent">{s.invoicingModel.replaceAll("_", " ")}</Badge>
                 </div>
-                <p className="mt-2 text-xs text-muted">
-                  Services priced per SOW — apply {totalDiscount}% volume discount in offer builder.
-                </p>
               </div>
             ))}
           </div>

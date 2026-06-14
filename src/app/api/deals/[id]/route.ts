@@ -14,7 +14,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       with: {
         account: true,
         owner: true,
-        offers: { with: { approvals: true } },
+        offers: {
+          with: { approvals: true, createdBy: true },
+          orderBy: (offers, { desc: d }) => [d(offers.version)],
+        },
         notes: { with: { author: true }, orderBy: (n, { desc }) => [desc(n.createdAt)] },
       },
     });

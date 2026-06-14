@@ -26,6 +26,7 @@ module.exports = {
         "card-hover": "var(--card-hover)",
         muted: "var(--muted)",
         section: "var(--section)",
+        surface: "var(--surface)",
       },
       width: {
         sidebar: "220px",

@@ -45,6 +45,13 @@ export const invoicingModelEnum = pgEnum("invoicing_model", [
 
 export const approvalStatusEnum = pgEnum("approval_status", ["pending", "approved", "rejected"]);
 
+export const offerStatusEnum = pgEnum("offer_status", [
+  "draft",
+  "submitted",
+  "approved",
+  "rejected",
+]);
+
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
   email: text("email").notNull().unique(),
@@ -118,6 +125,7 @@ export const services = pgTable("services", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
+  unitPrice: numeric("unit_price", { precision: 12, scale: 2 }).notNull().default("0"),
   serviceType: serviceTypeEnum("service_type").notNull().default("internal"),
   invoicingModel: invoicingModelEnum("invoicing_model").notNull().default("one_off"),
   isActive: boolean("is_active").default(true).notNull(),
@@ -178,7 +186,18 @@ export const offers = pgTable("offers", {
   discountPercent: numeric("discount_percent", { precision: 5, scale: 2 }),
   discountJustification: text("discount_justification"),
   total: numeric("total", { precision: 14, scale: 2 }).notNull(),
+  status: offerStatusEnum("status").notNull().default("draft"),
   isLocked: boolean("is_locked").default(false).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const newsPosts = pgTable("news_posts", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  authorId: uuid("author_id")
+    .notNull()
+    .references(() => users.id),
+  title: text("title"),
+  body: text("body").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -223,6 +242,11 @@ export const usersRelations = relations(users, ({ many }) => ({
   assignedCases: many(cases),
   notes: many(notes),
   notifications: many(notifications),
+  newsPosts: many(newsPosts),
+}));
+
+export const newsPostsRelations = relations(newsPosts, ({ one }) => ({
+  author: one(users, { fields: [newsPosts.authorId], references: [users.id] }),
 }));
 
 export const accountsRelations = relations(accounts, ({ one, many }) => ({

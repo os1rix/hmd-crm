@@ -1,15 +1,28 @@
 import { db } from "@/db";
 import { accounts } from "@/db/schema";
 import { apiError, apiSuccess, parseJsonBody, validationErrorResponse } from "@/lib/api";
+import { parseFilterDateStart } from "@/lib/date-filters";
 import { getSessionUser } from "@/lib/session";
 import { createAccountSchema } from "@/lib/validators";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, gte } from "drizzle-orm";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const user = await getSessionUser();
+    const url = new URL(request.url);
+    const channel = url.searchParams.get("channel");
+    const ownerId = url.searchParams.get("ownerId");
+    const dateFrom = url.searchParams.get("dateFrom");
+
     const rows = await db.query.accounts.findMany({
-      where: user?.role === "sales_rep" ? eq(accounts.ownerId, user.id) : undefined,
+      where: and(
+        user?.role === "sales_rep" ? eq(accounts.ownerId, user.id) : undefined,
+        channel
+          ? eq(accounts.channel, channel as (typeof accounts.channel.enumValues)[number])
+          : undefined,
+        ownerId ? eq(accounts.ownerId, ownerId) : undefined,
+        dateFrom ? gte(accounts.createdAt, parseFilterDateStart(dateFrom)) : undefined,
+      ),
       orderBy: [desc(accounts.updatedAt)],
       with: {
         owner: true,

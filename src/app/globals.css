@@ -28,6 +28,7 @@
   --border: #333336;
   --muted: var(--low-gray);
   --section: #6b6b6b;
+  --surface: #1a1a1c;
 }
 
 body {
@@ -44,5 +45,27 @@ body {
   .scrollbar-thin {
     scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
+  }
+
+  @keyframes skeleton-shimmer {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+
+  .skeleton-shimmer {
+    background: linear-gradient(
+      90deg,
+      #1a1a1e 0%,
+      #2a2a30 45%,
+      #3d3d46 50%,
+      #2a2a30 55%,
+      #1a1a1e 100%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.6s ease-in-out infinite;
   }
 }

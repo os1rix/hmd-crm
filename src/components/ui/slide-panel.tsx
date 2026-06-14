@@ -38,7 +38,7 @@ export function SlidePanel({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-border px-2 py-1 text-sm text-muted hover:text-foreground"
+            className="border border-border px-2 py-1 text-sm text-muted hover:text-foreground"
           >
             ✕
           </button>

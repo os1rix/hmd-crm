@@ -6,7 +6,7 @@ export async function POST(request: Request) {
 
   try {
     const narrative = await callAi(
-      "Write a 3-5 sentence finance executive summary of CRM pipeline health. Mention weighted value, biggest deals, and risks.",
+      "Write a 3-5 sentence finance executive summary of CRM pipeline health. Mention total pipeline value, open deal count, and risks.",
       [{ role: "user", content: JSON.stringify(summary) }],
     );
     return apiSuccess({ narrative });

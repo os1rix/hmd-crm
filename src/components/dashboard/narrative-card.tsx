@@ -9,7 +9,7 @@ export function NarrativeCard({
 }: {
   summary: {
     totalPipeline: number;
-    weightedPipeline: number;
+    openDeals: number;
     stalled: number;
   };
 }) {

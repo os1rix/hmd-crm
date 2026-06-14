@@ -1,21 +1,40 @@
 import { db } from "@/db";
 import { deals } from "@/db/schema";
 import { apiError, apiSuccess, parseJsonBody, validationErrorResponse } from "@/lib/api";
-import { dealTotalValue } from "@/lib/deals";
+import { parseFilterDateEnd, parseFilterDateStart } from "@/lib/date-filters";
 import { getSessionUser } from "@/lib/session";
 import { createDealSchema } from "@/lib/validators";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, gte, lte } from "drizzle-orm";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const user = await getSessionUser();
+    const url = new URL(request.url);
+    const stage = url.searchParams.get("stage");
+    const channel = url.searchParams.get("channel");
+    const ownerId = url.searchParams.get("ownerId");
+    const dateFrom = url.searchParams.get("dateFrom");
+    const dateTo = url.searchParams.get("dateTo");
+
     const rows = await db.query.deals.findMany({
-      where: user?.role === "sales_rep" ? eq(deals.ownerId, user.id) : undefined,
+      where: and(
+        user?.role === "sales_rep" ? eq(deals.ownerId, user.id) : undefined,
+        stage ? eq(deals.stage, stage as (typeof deals.stage.enumValues)[number]) : undefined,
+        channel
+          ? eq(deals.channel, channel as (typeof deals.channel.enumValues)[number])
+          : undefined,
+        ownerId ? eq(deals.ownerId, ownerId) : undefined,
+        dateFrom ? gte(deals.createdAt, parseFilterDateStart(dateFrom)) : undefined,
+        dateTo ? lte(deals.createdAt, parseFilterDateEnd(dateTo)) : undefined,
+      ),
       orderBy: [desc(deals.updatedAt)],
       with: {
         account: true,
         owner: true,
-        offers: { with: { approvals: true } },
+        offers: {
+          with: { approvals: true, createdBy: true },
+          orderBy: (offers, { desc: d }) => [d(offers.version)],
+        },
       },
     });
     return Response.json(rows);

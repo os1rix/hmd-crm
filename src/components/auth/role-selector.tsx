@@ -23,7 +23,7 @@ const ROLE_META: Record<string, { icon: LucideIcon; description: string }> = {
   },
   finance: {
     icon: Calculator,
-    description: "Review forecasts, weighted pipeline, and finance approvals.",
+    description: "Review forecasts, pipeline totals, and finance approvals.",
   },
 };
 

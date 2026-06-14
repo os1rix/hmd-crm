@@ -1,3 +1,4 @@
+import { InfoTip } from "@/components/ui/info-tip";
 import { formatToday, roleLabel } from "@/lib/format";
 import type { SessionUser } from "@/lib/session";
 
@@ -6,7 +7,7 @@ export function DashboardHeader({
   stat,
 }: {
   user: SessionUser;
-  stat: { label: string; value: string };
+  stat: { label: string; value: string; hint?: string };
 }) {
   return (
     <div className="mb-6 p-5">
@@ -20,7 +21,10 @@ export function DashboardHeader({
           <p className="mt-1 font-mono text-lg font-semibold tabular-nums text-accent">
             {stat.value}
           </p>
-          <p className="text-[11px] text-muted">{stat.label}</p>
+          <p className="flex items-center justify-end gap-1 text-[11px] text-muted">
+            {stat.label}
+            {stat.hint && <InfoTip text={stat.hint} />}
+          </p>
         </div>
       </div>
     </div>
